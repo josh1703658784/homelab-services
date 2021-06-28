@@ -1,0 +1,284 @@
+---
+
+# notes
+# ports are exposed to the host machine
+# exposed only allows access by linked services
+#
+# EXAMPLE DEPLOYS
+# https://gist.github.com/Webreaper/81ecda3ecc45fa61a16dfc90cfc4550d
+# EXAMPLE DEPLOYS
+
+# CAP_ADD/DROP information: http://rhelblog.redhat.com/2016/10/17/secure-your-containers-with-this-one-weird-trick/
+
+# @TODO: wireguard, flexget, webdav, git server, backblaze, ansible -- drops caps, restrict permissions, etc.
+
+version: "2.4"
+
+services:
+
+  #temp_expressvpn:
+  #  image: polkaned/expressvpn
+  #  container_name: temp_expressvpn
+  #  environment:
+  #      - ACTIVATION_CODE=${EXPRESS_VPN_ACTIVATION_CODE}
+  #  cap_add:
+  #      - NET_ADMIN
+  #  devices:
+  #      - "/dev/net/tun:/dev/net/tun"
+  #  privileged: true
+  #  tty: true
+  #  ports:
+  #      - 8090:8090
+  #      - 6881:6881
+  #      - 6881:6881/udp
+  #      - 8080:8080
+  #      - 9117:9117
+  #      - 8989:8989
+  #      - 7878:7878
+  #      - 8686:8686
+  #  command: /bin/bash
+  #  restart: always
+
+  transmission-movies:
+    container_name: transmission-movies
+    image: linuxserver/transmission:latest
+    #network_mode: service:temp_expressvpn
+    networks:
+      - transmission-movies
+    restart: always
+    read_only: true
+    environment:
+        - S6_READ_ONLY_ROOT=1
+        - PUID=64999
+        - PGID=64999
+    ports:
+        - "49091:9091/tcp"   # webui
+        - "41412:51413/tcp" # p2p traffic
+        - "41412:51413/udp" # p2p traffic
+    volumes:
+      - transmission-movies-config:/config
+      - /docker/media/movies:/downloads/complete
+      - transmission-movies-downloads-incomplete:/downloads/incomplete
+    tmpfs:
+      - /var:rw,exec
+
+
+  transmission-tv:
+    container_name: transmission-tv
+    image: linuxserver/transmission:latest
+    networks:
+      - transmission-tv
+    restart: always
+    read_only: true
+    environment:
+        - S6_READ_ONLY_ROOT=1
+        - PUID=64999
+        - PGID=64999
+    ports:
+        - "49092:9091/tcp"   # webui
+        - "41413:51413/tcp" # p2p traffic
+        - "41413:51413/udp" # p2p traffic
+    volumes:
+      - transmission-tv-config:/config
+      - /docker/media/tv:/downloads/complete
+      - transmission-tv-downloads-incomplete:/downloads/incomplete
+    tmpfs:
+      - /var:rw,exec
+
+
+  # movie player
+  plex:
+    container_name: plex
+    image: linuxserver/plex:latest
+    network_mode: host
+    environment:
+      - S6_READ_ONLY_ROOT=1 # https://github.com/just-containers/s6-overlay/pull/176
+      - PUID=64999
+      - PGID=64999
+      - VERSION=docker
+      - ADVERTISE_IP=http://10.0.1.20:32400/
+    volumes:
+      - plex-config:/config
+      - /docker/media/tv:/downloaded_media/tv:ro
+      - /docker/media/movies:/downloaded_media/movies:ro
+    tmpfs:
+      - /var:rw,exec
+
+
+
+  jackett:
+    image: linuxserver/jackett:latest
+    container_name: jackett
+    environment:
+      - PUID=1024
+      - PGID=101
+      - TZ=GB
+    restart: always
+    networks: 
+      - jackett
+    depends_on:
+      - transmission-movies
+      - transmission-tv
+
+
+  sonarr:
+    image: linuxserver/sonarr:latest
+    container_name: sonarr
+    environment:
+      - PUID=1024
+      - PGID=101
+      - TZ=GB
+    restart: always
+    networks: 
+      - sonarr
+    depends_on:
+      - jackett
+      - transmission-movies
+      - transmission-tv
+ 
+  radarr:
+    image: linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      - PUID=1024
+      - PGID=101
+      - TZ=GB
+    restart: always
+    networks: 
+      - radarr
+    depends_on:
+      - jackett
+      - transmission-movies
+      - transmission-tv
+
+
+  transmission-openvpn:
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - '/docker/configurations/openvpn/wireguard/mullvad_config_linux_us_nyc:/data'
+    sysctls:
+      - "net.ipv6.conf.all.disable_ipv6=0"
+    environment:
+      - OPENVPN_PROVIDER=MULLVAD
+      - CREATE_TUN_DEVICE=true
+        #MULLVAD- OPENVPN_USERNAME=user
+        #- OPENVPN_PASSWORD=pass
+      - LOCAL_NETWORK=192.168.0.0/16
+    logging:
+        driver: json-file
+        options:
+            max-size: 10m
+    ports:
+        - '9091:9091'
+    image: haugene/transmission-openvpn
+
+
+
+
+    #  wireguard:
+    #    image: masipcat/wireguard-go:latest
+    #    cap_add:
+    #     - ALL
+    #    sysctls:
+    #      #- net.ipv6.conf.all.disable_ipv6=0
+    #     - net.ipv4.ip_forward=1
+    #    volumes:
+    #     - /dev/net/tun:/dev/net/tun
+    #     # Folder with 'publickey', 'privatekey' and 'wg0.conf'
+    #     #- ./wireguard:/etc/wireguard
+    #     - /docker/configurations/wireguard/mullvad:/etc/wireguard
+    #    environment:
+    #     - WG_COLOR_MODE=always
+    #     - LOG_LEVEL=info
+    #     - ALLOWEDIPS=0.0.0.0/0 #optional
+    #    ports:
+    #     - 51820:51820/udp
+    #    # Uncomment the following line when 'AllowedIPs' is '0.0.0.0/0'
+    #    privileged: true
+    #    restart: always
+    #
+#  wireguard:
+#    image: linuxserver/wireguard:latest
+#    container_name: wireguard
+#    privileged: true
+#    networks:
+#      - wireguard
+#    cap_add:
+#      - NET_ADMIN
+#      - SYS_MODULE
+#    environment:
+#      - PUID=1000
+#      - PGID=1000
+#      - TZ=Europe/London
+#      - ALLOWEDIPS=0.0.0.0/0 #optional
+#    volumes:
+#      - /docker/configurations/wireguard/mullvad:/config
+#      - /dev/net/tun:/dev/net/tun
+#      - /lib/modules:/lib/modules
+#      - /usr/src:/usr/src
+#    ports:
+#      - 51820:51820/udp
+#    sysctls:
+#      - net.ipv4.conf.all.src_valid_mark=1
+#    restart: always
+  
+
+volumes:
+  transmission-movies-config:
+  transmission-movies-downloads-incomplete:
+  transmission-tv-config:
+  transmission-tv-downloads-incomplete:
+  plex-config:
+
+networks:
+  transmission-movies:
+  transmission-tv:
+  jackett:
+  sonarr:
+  radarr:
+  plex:
+  wireguard:
+
+    #  pihole:
+    #    driver: macvlan
+    #    driver_opts:
+    #      parent: eth0
+    #    ipam:
+    #      config:
+    #        - subnet: 10.0.1.0/24            # <-- Update
+    #          gateway: 10.0.1.1              # <-- Update
+    #          ip_range: 10.0.1.192/27        # <-- Update
+    #
+    #
+    #
+    #
+
+
+
+
+        #  pihole:
+        #    container_name: pihole
+        #    image: pihole/pihole:latest
+        #    hostname: pihole
+        #    domainname: pihole.local             # <-- Update
+        #    mac_address: d0:ca:ab:cd:ef:01
+        #    cap_add:
+        #      - NET_ADMIN
+        #    networks:
+        #      pihole:
+        #        ipv4_address: 10.0.1.30   # <-- Update
+        #    dns:
+        #      - 127.0.0.1
+        #      - 193.138.218.74
+        #    ports:
+        #      - 443/tcp
+        #      - 53/tcp
+        #      - 53/udp
+        #      - 67/udp
+        #      - 80/tcp
+        #    environment:
+        #      - ServerIP=10.0.1.20                # <-- Update (match ipv4_address)
+        #      - WEBPASSWORD=""                    # <-- Add password (if required)
+        #    restart: always
+

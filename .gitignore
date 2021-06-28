@@ -2,3 +2,4 @@ keyfile_password
 *.conf
 *.swp
 *.no_commit
+.env
