@@ -34,7 +34,7 @@ services:
 
   transmission-movies:
     container_name: transmission-movies
-    image: linuxserver/transmission:latest
+    image: lscr.io/linuxserver/transmission:latest
     #network_mode: service:temp_expressvpn
     networks:
       - transmission-movies
@@ -58,7 +58,7 @@ services:
   
   transmission-tv:
     container_name: transmission-tv
-    image: linuxserver/transmission:latest
+    image: lscr.io/linuxserver/transmission:latest
     networks:
       - transmission-tv
     restart: always
@@ -81,7 +81,7 @@ services:
   
   transmission-books:
     container_name: transmission-books
-    image: linuxserver/transmission:latest
+    image: lscr.io/linuxserver/transmission:latest
     #network_mode: "service:gluetun"
     #networks:
     #  - vpn
@@ -107,7 +107,7 @@ services:
   # movie player
   plex:
     container_name: plex
-    image: linuxserver/plex:latest
+    image: lscr.io/linuxserver/plex:latest
     network_mode: host
     restart: always
     environment:
@@ -126,23 +126,60 @@ services:
 
   # Manages your movie library
   radarr:
+    image: lscr.io/linuxserver/radarr
     container_name: radarr
-    image: linuxserver/radarr
-    networks: 
+    networks:
       - radarr
-    restart: always
-    environment: 
-      - ADVERTISE_IP=http://10.0.1.20:32500/
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+    ports:
+      - 7878:7878
+    restart: unless-stopped
+
 
   # Manages your TV library
   sonarr:
-   container_name: sonarr
-   image: linuxserver/sonarr
-   networks: 
-     - sonarr
-   restart: always
-   environment: 
-     - ADVERTISE_IP=http://10.0.1.20:32600/
+    image: lscr.io/linuxserver/sonarr
+    container_name: sonarr
+    networks:
+      - sonarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+    ports:
+      - 8989:8989
+    restart: unless-stopped
+
+
+  organizr:
+    image: organizr/organizr
+    container_name: organizer
+    #environment:
+    #- fpm=false
+        #- branch="v2-master"
+    ports:
+      - 5656:80
+
+  jackett:
+    image: lscr.io/linuxserver/jackett
+    container_name: jackett
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+      - AUTO_UPDATE=true #optional
+        #- RUN_OPTS=<run options here> #optional
+    #volumes:
+    #  - <path to data>:/config
+    #  - <path to blackhole>:/downloads
+    ports:
+      - 9117:9117
+    restart: unless-stopped
+
+
 
 
 volumes:
@@ -152,6 +189,15 @@ volumes:
 
   transmission-vpn-movies-downloads-incomplete:
   transmission-vpn-tv-downloads-incomplete:
+
+  # BOBARR
+  web_build:
+  api_build:
+  api_node_modules:
+  web_node_modules:
+  db_data:
+  redis_data:
+  # BOBARR
 
 networks:
   transmission-movies:
