@@ -134,23 +134,44 @@ services:
       - /var:rw,exec
   
   
-  # media player
-  # @TODO fix proxy
+
+
+  # movie player
   plex:
-   container_name: plex
-   image: lscr.io/linuxserver/plex:latest
-   network_mode: host # @TODO isolate network
-   restart: always
-   environment:
-     - VERSION=docker
-     - ADVERTISE_IP=http://10.0.1.20:32400/
-   volumes:
-     - /docker/data/plex/database:/config
-     - /docker/media/tv:/downloaded_media/tv:ro
-     - /docker/media/movies:/downloaded_media/movies:ro
-   tmpfs:
-     - /var:rw,exec
-     - /transcode:ro
+    container_name: plex
+    image: linuxserver/plex:latest
+    network_mode: host
+    environment:
+      - S6_READ_ONLY_ROOT=1 # https://github.com/just-containers/s6-overlay/pull/176
+      - PUID=64999
+      - PGID=64999
+      - VERSION=docker
+      - ADVERTISE_IP=http://10.0.1.10:32400/
+    volumes:
+      - /docker/data/plex/database2:/config
+      - /docker/media/tv:/downloaded_media/tv:ro
+      - /docker/media/movies:/downloaded_media/movies:ro
+    tmpfs:
+      - /var:rw,exec
+
+
+        #  # media player
+        #  # @TODO fix proxy
+        #  plex:
+        #   container_name: plex
+        #   image: lscr.io/linuxserver/plex:latest
+        #   network_mode: host # @TODO isolate network
+        #   restart: always
+        #   environment:
+        #     - VERSION=docker
+        #     - ADVERTISE_IP=http://10.0.1.20:32400/
+        #   volumes:
+        #     - /docker/data/plex/database:/config
+        #     - /docker/media/tv:/downloaded_media/tv:ro
+        #     - /docker/media/movies:/downloaded_media/movies:ro
+        #   tmpfs:
+        #     - /var:rw,exec
+        #     - /transcode:ro
 
         ## ===========================================================================================================================
         ## ===========================================================================================================================

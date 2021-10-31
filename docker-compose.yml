@@ -107,124 +107,62 @@ services:
     tmpfs:
       - /var:rw,exec
   
-  
-        #  transmission-books:
-        #    container_name: transmission-books
-        #    image: lscr.io/linuxserver/transmission:latest
-        #    networks:
-        #      - transmission-books
-        #    restart: always
-        #    #read_only: true
-        #    environment:
-        #      - S6_READ_ONLY_ROOT=1
-        #      - PUID=64999
-        #      - PGID=64999
-        #      - VIRTUAL_HOST=books.erdos.local
-        #      - VIRTUAL_PORT=9091
-        #    expose:
-        #      - 9091 # webui
-        #    ports:
-        #      #- "49092:9091/tcp"   # webui
-        #      - "41414:51413/tcp" # p2p traffic
-        #      - "41414:51413/udp" # p2p traffic
-        #    volumes:
-        #      - /docker/data/transmission-books:/config
-        #      - /docker/media/books:/downloads/complete
-        #      - transmission-books-downloads-incomplete:/downloads/incomplete
-        #    tmpfs:
-        #      - /var:rw,exec
-        #  
-        #  
-        #  # media player
-        #  # @TODO fix proxy
-        #  plex:
-        #   container_name: plex
-        #   image: lscr.io/linuxserver/plex:latest
-        #   network_mode: host # @TODO isolate network
-        #   restart: always
-        #   environment:
-        #     - S6_READ_ONLY_ROOT=1 # https://github.com/just-containers/s6-overlay/pull/176
-        #     - PUID=64999
-        #     - PGID=64999
-        #     - VERSION=docker
-        #     - ADVERTISE_IP=http://10.0.1.20:32400/
-        #   expose:
-        #     - 32400
-        #   volumes:
-        #     - /docker/data/plex/database:/config
-        #     - /docker/media/tv:/downloaded_media/tv:ro
-        #     - /docker/media/movies:/downloaded_media/movies:ro
-        #   tmpfs:
-        #     - /var:rw,exec
-        #     - /transcode:ro
-        #
-        #        ## ===========================================================================================================================
-        #        ## ===========================================================================================================================
-        #        ## ===========================================================================================================================
-        #        ## ===========================================================================================================================
-  plex2:
-    container_name: plex2
-    image: linuxserver/plex:1.20.1.3252-a78fef9a9-ls116
-    network_mode: bridge
-    privileged: true
-    cap_add:
-      - ALL
-    networks:
-       - plex
-    environment:
-      #- S6_READ_ONLY_ROOT=1 # https://github.com/just-containers/s6-overlay/pull/176
-      #- PUID=64999
-      #- PGID=64999
-      - VERSION=docker
-      - UMASK_SET=022
-      - ADVERTISE_IP=http://10.0.1.10:32400/
-        #- VIRTUAL_HOST=plex.erdos.local
-        #- VIRTUAL_PORT=32400
-        #expose:
-        #- 32400
-    ports:
-      - 18136:18136/tcp
-      - 18039:18038/tcp
-      - 18006:18006/tcp
-      - 18130:18130/tcp
 
-      - 18136:18136/udp
-      - 18039:18038/udp
-      - 18006:18006/udp
-      - 18130:18130/udp
-    #  # Port listing from Plex website as of 2019-08-18.
-    #  # https://support.plex.tv/articles/201543147-what-network-ports-do-i-need-to-allow-through-my-firewall/
-    #  # Disabled 1900 and 5353 as of 2019-08-18.
-    #  # Was running into some sort of conflict when trying to map them with bridge mode.
-    #  # Something else on the NAS is using those ports -- home assistant perhaps?
-    #  # The ports are for Plex services I don't necessarily need, so they are disabled for now.
-      - "1900:1900/udp" # (for access to the Plex DLNA Server)
-      - "5353:5353/udp" # (for older Bonjour/Avahi network discovery)
-      - "32400:32400" # (for access to the Plex Media Server) [required]
-      - "3005:3005" # (for controlling Plex Home Theater via Plex Companion)
-      - "8324:8324" # (for controlling Plex for Roku via Plex Companion)
-      - "32410:32410/udp" # (for current GDM network discovery)
-      - "32412:32412/udp" # (for current GDM network discovery)
-      - "32413:32413/udp" # (for current GDM network discovery)
-      - "32414:32414/udp" # (for current GDM network discovery)
-      - "32469:32469" # (for access to the Plex DLNA Server)
+  transmission-books:
+    container_name: transmission-books
+    image: lscr.io/linuxserver/transmission:latest
+    networks:
+      - transmission-books
+    restart: always
+    #read_only: true
+    environment:
+      - S6_READ_ONLY_ROOT=1
+      - PUID=64999
+      - PGID=64999
+      - VIRTUAL_HOST=books.erdos.local
+      - VIRTUAL_PORT=9091
+    expose:
+      - 9091 # webui
+    ports:
+      #- "49092:9091/tcp"   # webui
+      - "41414:51413/tcp" # p2p traffic
+      - "41414:51413/udp" # p2p traffic
+    volumes:
+      - /docker/data/transmission-books:/config
+      - /docker/media/books:/downloads/complete
+      - transmission-books-downloads-incomplete:/downloads/incomplete
+    tmpfs:
+      - /var:rw,exec
+
+
+
+  # movie player
+  # @TODO try to put this in bridge networking?
+  plex:
+    container_name: plex
+    image: linuxserver/plex:latest
+    network_mode: host
+    environment:
+      - S6_READ_ONLY_ROOT=1 # https://github.com/just-containers/s6-overlay/pull/176
+      - PUID=64999
+      - PGID=64999
+      - VERSION=docker
+      - ADVERTISE_IP=http://10.0.1.10:32400/
     volumes:
       - /docker/data/plex/database2:/config
       - /docker/media/tv:/downloaded_media/tv:ro
       - /docker/media/movies:/downloaded_media/movies:ro
     tmpfs:
       - /var:rw,exec
-      - /transcode:ro
-        ### ===========================================================================================================================
-        ### ===========================================================================================================================
-        ### ===========================================================================================================================
-        ### ===========================================================================================================================
+
+
   # Manages your movie library
   radarr:
     image: lscr.io/linuxserver/radarr
     container_name: radarr
     networks:
       - radarr
+      - jackett
     environment:
       - PUID=1000
       - PGID=1000
@@ -244,6 +182,7 @@ services:
     container_name: sonarr
     networks:
       - sonarr
+      - jackett
     environment:
       - PUID=1000
       - PGID=1000
@@ -256,6 +195,25 @@ services:
         #- 8989:8989
     restart: unless-stopped
 
+
+  jackett:
+    image: lscr.io/linuxserver/jackett
+    container_name: jackett
+    networks:
+      - jackett
+      - sonarr
+      - radarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+      - AUTO_UPDATE=true #optional
+      - VIRTUAL_HOST=jackett.erdos.local
+      - VIRTUAL_PORT=9117
+    expose: 
+      - 9117
+    ports: 
+      - 9117
 
   organizr:
     image: organizr/organizr
@@ -270,20 +228,6 @@ services:
     #- fpm=false
         #- branch="v2-master"
 
-  jackett:
-    image: lscr.io/linuxserver/jackett
-    container_name: jackett
-    networks:
-      - jackett
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/London
-      - AUTO_UPDATE=true #optional
-      - VIRTUAL_HOST=jackett.erdos.local
-      - VIRTUAL_PORT=9117
-    expose: 
-      - 9117
         #- RUN_OPTS=<run options here> #optional
     #volumes:
     #  - <path to data>:/config
@@ -328,10 +272,10 @@ networks:
   sonarr:
   radarr:
   organizr:
-  plex:
+    #plex:
   wireguard:
   transmission-vpn-movies:
   transmission-vpn-tv:
   proxy:
   whoami:
-
+  plex:
