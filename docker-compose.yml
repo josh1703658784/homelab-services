@@ -11,8 +11,12 @@
 # CAP_ADD/DROP information: http://rhelblog.redhat.com/2016/10/17/secure-your-containers-with-this-one-weird-trick/
 
 # @TODO: wireguard, flexget, git server, backblaze, anonaddy
+# @TODO review these https://teddit.net/r/radarr/comments/hbwnb2/a_list_of_all_companion_tools_and_software/
+# @TODO actually restrict networks
 
 # p2p related apps: https://teddit.net/r/radarr/comments/hbwnb2/a_list_of_all_companion_tools_and_software/
+#
+
 
 version: "2.4"
 
@@ -34,6 +38,8 @@ services:
       - sonarr
       - organizr
       - jackett
+      - bazarr
+      - ombi
     environment:
       - DEFAULT_HOST=whoami.erdos.local
     ports:
@@ -59,10 +65,11 @@ services:
     #network_mode: service:temp_expressvpn
     networks:
       - transmission-movies
+      - jackett
     restart: always
-    read_only: true
+    #read_only: true
     environment:
-      - S6_READ_ONLY_ROOT=1
+      #- S6_READ_ONLY_ROOT=1
       - PUID=64999
       - PGID=64999
       - VIRTUAL_HOST=movies.erdos.local
@@ -87,9 +94,10 @@ services:
     networks:
       - transmission-tv
     restart: always
-    read_only: true
+    #read_only: true
+    #user: abc
     environment:
-      - S6_READ_ONLY_ROOT=1
+      #- S6_READ_ONLY_ROOT=1
       - PUID=64999
       - PGID=64999
       - VIRTUAL_HOST=tv.erdos.local
@@ -163,12 +171,17 @@ services:
     networks:
       - radarr
       - jackett
+      - transmission-movies
     environment:
-      - PUID=1000
-      - PGID=1000
+      - PUID=64999
+      - PGID=64999
       - TZ=Europe/London
       - VIRTUAL_HOST=radarr.erdos.local
       - VIRTUAL_PORT=7878
+    volumes:
+      - /docker/data/raddarr/config:/config
+      - /docker/media/movies:/movies
+        #- /path/to/downloadclient-downloads:/downloads #optional
     expose:
       - 7878 
         #ports:
@@ -183,12 +196,17 @@ services:
     networks:
       - sonarr
       - jackett
+      - transmission-tv
     environment:
-      - PUID=1000
-      - PGID=1000
+      - PUID=64999
+      - PGID=64999
       - TZ=Europe/London
       - VIRTUAL_HOST=sonarr.erdos.local
       - VIRTUAL_PORT=8989
+    volumes:
+      - /docker/data/sonarr/config:/config
+      - /docker/media/tv:/tv
+        #- /path/to/downloadclient-downloads:/downloads #optional
     expose:
       - 8989
         #ports:
@@ -199,49 +217,71 @@ services:
   jackett:
     image: lscr.io/linuxserver/jackett
     container_name: jackett
+    volumes:
+      - /docker/data/jackett/config:/config
+        #- <path to blackhole>:/downloads
     networks:
       - jackett
       - sonarr
       - radarr
     environment:
-      - PUID=1000
-      - PGID=1000
+      - PUID=64999
+      - PGID=64999
       - TZ=Europe/London
       - AUTO_UPDATE=true #optional
       - VIRTUAL_HOST=jackett.erdos.local
       - VIRTUAL_PORT=9117
     expose: 
       - 9117
-    ports: 
-      - 9117
 
-  organizr:
-    image: organizr/organizr
-    container_name: organizer
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr
+    container_name: bazarr
     networks:
-      - organizr
+      - proxy
+      - bazarr
     environment:
-      - VIRTUAL_HOST=organizr.erdos.local
-      - VIRTUAL_PORT=80
+      - PUID=64999
+      - PGID=64999
+      - TZ=Europe/London
+      - VIRTUAL_HOST=bazarr.erdos.local
+      - VIRTUAL_PORT=6767
+    volumes:
+      - /docker/data/bazarr/config:/config
+      - /docker/media/tv:/tv
+      - /docker/media/movies:/movies
     expose:
-      - 80
-    #- fpm=false
-        #- branch="v2-master"
+      - 6767
+    restart: always
 
-        #- RUN_OPTS=<run options here> #optional
-    #volumes:
-    #  - <path to data>:/config
-    #  - <path to blackhole>:/downloads
-    #ports:
-    #- 9117:9117
+
+  ombi:
+    #image: lscr.io/linuxserver/ombi
+    image: linuxserver/ombi
+    container_name: ombi
+    networks: 
+      - ombi
+      - proxy
+    environment:
+      - PUID=64999
+      - PGID=64999
+      - TZ=Europe/London
+        #- BASE_URL=/ombi #optional
+      - VIRTUAL_HOST=ombi.erdos.local
+      - VIRTUAL_PORT=3579
+    volumes:
+      - /docker/data/ombi/config:/config
+    expose: 
+      - 3579
     restart: unless-stopped
-
 
 # @TODO
 # ADD THIS SERVICE
 # ADD THIS SERVICE
 # Traktarr: Add content to Radarr/Sonarr from Trakt.tv
 # https://hub.docker.com/r/containrrr/watchtower
+# organizr/organizr
 # ADD THIS SERVICE
 # ADD THIS SERVICE
 # @TODO
@@ -279,3 +319,5 @@ networks:
   proxy:
   whoami:
   plex:
+  bazarr:
+  ombi:
