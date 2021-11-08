@@ -13,6 +13,7 @@
 # @TODO: wireguard, flexget, git server, backblaze, anonaddy
 # @TODO review these https://teddit.net/r/radarr/comments/hbwnb2/a_list_of_all_companion_tools_and_software/
 # @TODO actually restrict networks
+# @TODO try https://dockersl.im
 
 # p2p related apps: https://teddit.net/r/radarr/comments/hbwnb2/a_list_of_all_companion_tools_and_software/
 #
@@ -26,57 +27,60 @@ services:
     # @TODO split into two containers
     # >> https://github.com/nginx-proxy/nginx-proxy#separate-containers
     # alpine container
-    image: jwilder/nginx-proxy@sha256:860110839a309c4da3a915f53c2f3e5e99da9c9d3ea80c05a4155be2df1412ed
-    read_only: true
+    image: jwilder/nginx-proxy:latest
+    #read_only: true
     container_name: proxy
     networks:
-      - whoami
-      - transmission-movies
-      - transmission-tv
-      - transmission-books
+      - proxy
+      - vpn
+      - bazarr
+      - jackett
+      - ombi
+      - organizr
       - plex
       - radarr
       - sonarr
-      - organizr
-      - jackett
-      - bazarr
-      - ombi
+      - transmission-movies
+      - transmission-tv
+      - transmission-books
+      - whoami
     environment:
       - NETWORK_ACCESS=internal
       - DEFAULT_HOST=whoami.erdos.local
     ports:
-      - "80:80"
+      - 80:80
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
-    tmpfs:
-      - /var/cache/nginx/client_temp
-      - /var/cache/nginx/proxy_temp
-      - /var/cache/nginx/fastcgi_temp
-      - /var/cache/nginx/uwsgi_temp
-      - /var/cache/nginx/scgi_temp
-      - /etc/nginx/dhparam
-      - /etc/nginx/conf.d
-      - /var/run
-      - /tmp
-    cap_drop:
-      - ALL
-    cap_add:
-      - CHOWN
-      - NET_BIND_SERVICE
-      - SETGID
-      - SETUID
+        #tmpfs:
+        #  - /var/cache/nginx/client_temp
+        #  - /var/cache/nginx/proxy_temp
+        #  - /var/cache/nginx/fastcgi_temp
+        #  - /var/cache/nginx/uwsgi_temp
+        #  - /var/cache/nginx/scgi_temp
+        #  - /etc/nginx/dhparam
+        #  - /etc/nginx/conf.d
+        #  - /var/run
+        #  - /tmp
+        #cap_drop:
+        #  - ALL
+        #cap_add:
+        #  - CHOWN
+        #  - NET_BIND_SERVICE
+        #  - SETGID
+        #  - SETUID
 
   whoami:
     # alpine
-    image: "jwilder/whoami@sha256:c621c699e1becc851a27716df9773fa9a3f6bccb331e6702330057a688fd1d5a"
+    image: "jwilder/whoami:latest"
     container_name: whoami
     read_only: true
     cap_drop:
       - ALL
     networks:
+      - proxy
       - whoami
     expose:
-      - "8000"
+      - 8000
     user: nobody
     environment:
       - NETWORK_ACCESS=internal
@@ -87,8 +91,9 @@ services:
   transmission-movies:
     container_name: transmission-movies
     # alpine
-    image: lscr.io/linuxserver/transmission@sha256:f5b529e157669ee98d98ac0aae25bcb6b46ff6ee0e48f59cc9d1fa851cf69ee9
+    image: lscr.io/linuxserver/transmission:latest
     networks:
+      - proxy
       - transmission-movies
       - jackett
     restart: always
@@ -108,11 +113,11 @@ services:
     expose:
       - "9091" # webui
     ports:
-      - "41412:51413/tcp" # p2p traffic
-      - "41412:51413/udp" # p2p traffic
+      - "58320:51413/tcp" # p2p traffic
+      - "58320:51413/udp" # p2p traffic
     volumes:
-      - /docker/data/transmission-movies:/config
-      - /docker/media/movies:/downloads/complete
+      - /volume1/docker_app_data/apps/transmission-movies/config:/config
+      - /volume1/docker_app_data/apps/transmission-movies/media:/downloads/complete
       - transmission-movies-downloads-incomplete:/downloads/incomplete
     tmpfs:
       - /var/run/s6:rw,exec
@@ -121,7 +126,7 @@ services:
   transmission-tv:
     container_name: transmission-tv
     # alpine
-    image: lscr.io/linuxserver/transmission@sha256:f5b529e157669ee98d98ac0aae25bcb6b46ff6ee0e48f59cc9d1fa851cf69ee9
+    image: lscr.io/linuxserver/transmission:latest
     cap_drop:
       - ALL
     cap_add:
@@ -129,6 +134,7 @@ services:
       - SETGID
       - CHOWN
     networks:
+      - proxy
       - transmission-tv
     restart: always
     environment:
@@ -141,11 +147,11 @@ services:
     expose:
       - "9091" # webui
     ports:
-      - "41413:51413/tcp" # p2p traffic
-      - "41413:51413/udp" # p2p traffic
+      - "55880:51413/tcp" # p2p traffic
+      - "55880:51413/udp" # p2p traffic
     volumes:
-      - /docker/data/transmission-tv:/config
-      - /docker/media/tv:/downloads/complete
+      - /volume1/docker_app_data/apps/transmission-tv/config:/config
+      - /volume1/docker_app_data/apps/transmission-tv/media:/downloads/complete
       - transmission-tv-downloads-incomplete:/downloads/incomplete
     tmpfs:
       - /var/run/s6:rw,exec
@@ -155,7 +161,7 @@ services:
   transmission-books:
     container_name: transmission-books
     # alpine
-    image: lscr.io/linuxserver/transmission@sha256:f5b529e157669ee98d98ac0aae25bcb6b46ff6ee0e48f59cc9d1fa851cf69ee9
+    image: lscr.io/linuxserver/transmission:latest
     cap_drop:
       - ALL
     cap_add:
@@ -163,6 +169,7 @@ services:
       - SETGID
       - CHOWN
     networks:
+      - proxy
       - transmission-books
     restart: always
     environment:
@@ -178,8 +185,8 @@ services:
       - "41414:51413/tcp" # p2p traffic
       - "41414:51413/udp" # p2p traffic
     volumes:
-      - /docker/data/transmission-books:/config
-      - /docker/media/books:/downloads/complete
+      - /volume1/docker_app_data/apps/transmission-books/config:/config
+      - /volume1/docker_app_data/apps/transmission-books/media:/downloads/complete
       - transmission-books-downloads-incomplete:/downloads/incomplete
     tmpfs:
       - /var/run/s6:rw,exec
@@ -190,7 +197,7 @@ services:
   # @TODO try to put this in bridge networking?
   plex:
     container_name: plex
-    image: linuxserver/plex:latest
+    image: lscr.io/linuxserver/plex:latest
     network_mode: host
     cap_drop:
       - ALL
@@ -198,7 +205,6 @@ services:
       - SETGID
       - SETUID
       - CHOWN
-        #read_only: true
     environment:
       - NETWORK_ACCESS=internal
       - S6_READ_ONLY_ROOT=1 # https://github.com/just-containers/s6-overlay/pull/176
@@ -207,9 +213,9 @@ services:
       - VERSION=docker
       - ADVERTISE_IP=http://10.0.1.10:32400/
     volumes:
-      - /docker/data/plex/database:/config
-      - /docker/media/tv:/downloaded_media/tv:ro
-      - /docker/media/movies:/downloaded_media/movies:ro
+      - /volume1/docker_app_data/apps/plex/config:/config
+      - /volume1/docker_app_data/apps/transmission-tv/media:/tv:ro
+      - /volume1/docker_app_data/apps/transmission-movies/media:/movies:ro
     tmpfs:
       - /var/run/s6:exec
       - /app
@@ -219,72 +225,86 @@ services:
   # Manages your movie library
   # @TODO pin down basic hardening
   radarr:
-    image: lscr.io/linuxserver/radarr
+    image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
     networks:
+      - proxy
       - radarr
       - jackett
       - transmission-movies
-        #cap_drop:
-        #  - ALL
-        #cap_add:
-        #  - SETUID
-        #  - SETGID
-        #  - CHOWN
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
     environment:
       - NETWORK_ACCESS=internal
+      - S6_READ_ONLY_ROOT=1 # https://github.com/just-containers/s6-overlay/pull/176
       - PUID=64999
       - PGID=64999
       - TZ=Europe/London
       - VIRTUAL_HOST=radarr.erdos.local
       - VIRTUAL_PORT=7878
     volumes:
-      - /docker/data/raddarr/config:/config
-      - /docker/media/movies:/movies
+      - /volume1/docker_app_data/apps/raddarr/config:/config
+      - /volume1/docker_app_data/apps/transmission-movies/media:/movies:ro
+      - /volume1/docker_app_data/apps/transmission-movies/media:/downloads/complete:ro
     expose:
       - 7878 
-        #ports:
-        #- 7878:7878
     restart: unless-stopped
 
 
   # Manages your TV library
   sonarr:
-    image: lscr.io/linuxserver/sonarr
+    image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
     networks:
+      - proxy
       - sonarr
       - jackett
       - transmission-tv
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
     environment:
       - NETWORK_ACCESS=internal
+      - S6_READ_ONLY_ROOT=1 # https://github.com/just-containers/s6-overlay/pull/176
       - PUID=64999
       - PGID=64999
       - TZ=Europe/London
       - VIRTUAL_HOST=sonarr.erdos.local
       - VIRTUAL_PORT=8989
     volumes:
-      - /docker/data/sonarr/config:/config
-      - /docker/media/tv:/tv
-        #- /path/to/downloadclient-downloads:/downloads #optional
+      - /volume1/docker_app_data/apps/sonarr/config:/config
+      - /volume1/docker_app_data/apps/transmission-tv/media:/tv:ro
+      - /volume1/docker_app_data/apps/transmission-tv/media:/downloads/complete:ro
     expose:
       - 8989
-        #ports:
-        #- 8989:8989
     restart: unless-stopped
 
 
   jackett:
-    image: lscr.io/linuxserver/jackett
+    image: lscr.io/linuxserver/jackett:latest
     container_name: jackett
     volumes:
-      - /docker/data/jackett/config:/config
-        #- <path to blackhole>:/downloads
+      - /volume1/docker_app_data/apps/jackett/config:/config
     networks:
+      - proxy
       - jackett
       - sonarr
       - radarr
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
     environment:
+      - S6_READ_ONLY_ROOT=1
       - NETWORK_ACCESS=internal
       - PUID=64999
       - PGID=64999
@@ -297,12 +317,19 @@ services:
 
 
   bazarr:
-    image: lscr.io/linuxserver/bazarr
+    image: lscr.io/linuxserver/bazarr:latest
     container_name: bazarr
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
     networks:
       - proxy
       - bazarr
     environment:
+      - S6_READ_ONLY_ROOT=1
       - NETWORK_ACCESS=internal
       - PUID=64999
       - PGID=64999
@@ -310,9 +337,9 @@ services:
       - VIRTUAL_HOST=bazarr.erdos.local
       - VIRTUAL_PORT=6767
     volumes:
-      - /docker/data/bazarr/config:/config
-      - /docker/media/tv:/tv
-      - /docker/media/movies:/movies
+      - /volume1/docker_app_data/apps/bazarr/config:/config
+      - /volume1/docker_app_data/apps/transmission-tv/media:/tv
+      - /volume1/docker_app_data/apps/tranmission-movies/media:/movies
     expose:
       - 6767
     restart: always
@@ -320,12 +347,19 @@ services:
 
   ombi:
     #image: lscr.io/linuxserver/ombi
-    image: linuxserver/ombi
+    image: linuxserver/ombi:latest
     container_name: ombi
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
     networks: 
       - ombi
       - proxy
     environment:
+      - S6_READ_ONLY_ROOT=1
       - NETWORK_ACCESS=internal
       - PUID=64999
       - PGID=64999
@@ -334,10 +368,39 @@ services:
       - VIRTUAL_HOST=ombi.erdos.local
       - VIRTUAL_PORT=3579
     volumes:
-      - /docker/data/ombi/config:/config
+      - /volume1/docker_app_data/apps/ombi/config:/config
     expose: 
       - 3579
     restart: unless-stopped
+
+#  organizr:
+#    # alpine
+#    image: organizr/organizr:latest
+#    container_name: organizr
+#    cap_drop:
+#      - ALL
+#    cap_add:
+#      - SETUID
+#      - SETGID
+#      - CHOWN
+#    networks:
+#      - organizr
+#      - proxy
+#      - sonarr
+#    environment:
+#      - S6_READ_ONLY_ROOT=1
+#      - VIRTUAL_HOST=organizr.erdos.local,org.erdos.local
+#      - VIRTUAL_PORT=80
+#      - NETWORK_ACCESS=internal
+#      - PUID=64999
+#      - PGID=64999
+#    expose:
+#      - 80
+#    volumes:
+#      - /config
+
+
+
 
 # @TODO
 # ADD THIS SERVICE
@@ -384,3 +447,4 @@ networks:
   plex:
   bazarr:
   ombi:
+  vpn:
