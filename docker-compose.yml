@@ -30,20 +30,6 @@ services:
     image: jwilder/nginx-proxy:latest
     #read_only: true
     container_name: proxy
-    networks:
-      - proxy
-      - vpn
-      - bazarr
-      - jackett
-      - ombi
-      - organizr
-      - plex
-      - radarr
-      - sonarr
-      - transmission-movies
-      - transmission-tv
-      - transmission-books
-      - whoami
     environment:
       - NETWORK_ACCESS=internal
       - DEFAULT_HOST=whoami.erdos.local
@@ -51,34 +37,12 @@ services:
       - 80:80
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
-        #tmpfs:
-        #  - /var/cache/nginx/client_temp
-        #  - /var/cache/nginx/proxy_temp
-        #  - /var/cache/nginx/fastcgi_temp
-        #  - /var/cache/nginx/uwsgi_temp
-        #  - /var/cache/nginx/scgi_temp
-        #  - /etc/nginx/dhparam
-        #  - /etc/nginx/conf.d
-        #  - /var/run
-        #  - /tmp
-        #cap_drop:
-        #  - ALL
-        #cap_add:
-        #  - CHOWN
-        #  - NET_BIND_SERVICE
-        #  - SETGID
-        #  - SETUID
 
   whoami:
     # alpine
     image: "jwilder/whoami:latest"
     container_name: whoami
     read_only: true
-    cap_drop:
-      - ALL
-    networks:
-      - proxy
-      - whoami
     expose:
       - 8000
     user: nobody
@@ -88,110 +52,186 @@ services:
       - VIRTUAL_PORT=8000
 
 
-  transmission-movies:
-    container_name: transmission-movies
-    # alpine
-    image: lscr.io/linuxserver/transmission:latest
-    networks:
-      - proxy
-      - transmission-movies
-      - jackett
-    restart: always
-    cap_drop:
-      - ALL
+  movies:
+    image: haugene/transmission-openvpn
+    container_name: movies
     cap_add:
-      - SETUID
-      - SETGID
-      - CHOWN
+      - NET_ADMIN
+    volumes:
+      #/data/transmission-home
+      - /volume1/data/docker/apps/transmission-movies/data/watch:/data/watch
+      - /volume1/data/docker/apps/transmission-movies/data/completed:/data/completed
+      - /volume1/data/docker/apps/transmission-movies/data/incomplete:/data/incomplete
+      - /volume1/data/docker/apps/transmission-movies/data/transmission-home:/data/transmission-home
+      # > openvpn-pre-start.sh copies the on-disk readonly openvpn config to a directory where it is modified
+      # > by this container/service. It is not desirable to have these changes written back to disk.
+      # > I much prefer having the modifications done from a pristine config every time
+      - /volume1/data/docker/apps/vpn/config/openvpn-pre-start.sh:/scripts/openvpn-pre-start.sh:ro
+      - /volume1/data/docker/apps/vpn/config/mullvad_userpass.txt:/config/openvpn-credentials.txt:ro
+      - /volume1/data/docker/apps/vpn/config/mullvad_us_nyc.ovpn:/readonly_mullvad_us_nyc.ovpn:ro
     environment:
       - NETWORK_ACCESS=internal
-      - S6_READ_ONLY_ROOT=1
-      - PUID=64999
-      - PGID=64999
       - VIRTUAL_HOST=movies.erdos.local
       - VIRTUAL_PORT=9091
+      - OPENVPN_PROVIDER=custom
+      - OPENVPN_CONFIG=mullvad_us_nyc
+      - LOCAL_NETWORK=192.168.12.0/24
+      - TRANSMISSION_PEER_PORT=59771
+      - TRANSMISSION_PORT_FORWARDING_ENABLED=true
+      - TRANSMISSION_ENCRYPTION=1 # prefer encrypted connections but not required
+      - TRANSMISSION_PREFETCH_ENABLED=true
+        #- DROP_DEFAULT_ROUTE=true # maybe works, maybe breaks
+      - LOG_TO_STDOUT=true
     expose:
-      - "9091" # webui
-    ports:
-      - "58320:51413/tcp" # p2p traffic
-      - "58320:51413/udp" # p2p traffic
-    volumes:
-      - /volume1/docker_app_data/apps/transmission-movies/config:/config
-      - /volume1/docker_app_data/apps/transmission-movies/media:/downloads/complete
-      - transmission-movies-downloads-incomplete:/downloads/incomplete
-    tmpfs:
-      - /var/run/s6:rw,exec
-  
-  
-  transmission-tv:
-    container_name: transmission-tv
-    # alpine
-    image: lscr.io/linuxserver/transmission:latest
-    cap_drop:
-      - ALL
+      - 9091
+    sysctls:
+      - "net.ipv6.conf.all.disable_ipv6=0"
+
+  tv:
+    image: haugene/transmission-openvpn
+    container_name: tv
     cap_add:
-      - SETUID
-      - SETGID
-      - CHOWN
-    networks:
-      - proxy
-      - transmission-tv
-    restart: always
+      - NET_ADMIN
+    volumes:
+      - /volume1/data/docker/apps/transmission-tv/data/watch:/data/watch
+      - /volume1/data/docker/apps/transmission-tv/data/completed:/data/completed
+      - /volume1/data/docker/apps/transmission-tv/data/incomplete:/data/incomplete
+      - /volume1/data/docker/apps/transmission-tv/data/transmission-home:/data/transmission-home
+      # > openvpn-pre-start.sh copies the on-disk readonly openvpn config to a directory where it is modified
+      # > by this container/service. It is not desirable to have these changes written back to disk.
+      # > I much prefer having the modifications done from a pristine config every time
+      - /volume1/data/docker/apps/vpn/config/openvpn-pre-start.sh:/scripts/openvpn-pre-start.sh:ro
+      - /volume1/data/docker/apps/vpn/config/mullvad_userpass.txt:/config/openvpn-credentials.txt:ro
+      - /volume1/data/docker/apps/vpn/config/mullvad_us_nyc.ovpn:/readonly_mullvad_us_nyc.ovpn:ro
     environment:
       - NETWORK_ACCESS=internal
-      - S6_READ_ONLY_ROOT=1
-      - PUID=64999
-      - PGID=64999
       - VIRTUAL_HOST=tv.erdos.local
       - VIRTUAL_PORT=9091
+      - OPENVPN_PROVIDER=custom
+      - OPENVPN_CONFIG=mullvad_us_nyc
+      - LOCAL_NETWORK=192.168.12.0/24
+      - TRANSMISSION_PEER_PORT=57413
+      - TRANSMISSION_PORT_FORWARDING_ENABLED=false
+      - TRANSMISSION_ENCRYPTION=1 # prefer encrypted connections but not required
+      - TRANSMISSION_PREFETCH_ENABLED=true
+      - DROP_DEFAULT_ROUTE=true # maybe works, maybe breaks
+      - LOG_TO_STDOUT=true
     expose:
-      - "9091" # webui
-    ports:
-      - "55880:51413/tcp" # p2p traffic
-      - "55880:51413/udp" # p2p traffic
-    volumes:
-      - /volume1/docker_app_data/apps/transmission-tv/config:/config
-      - /volume1/docker_app_data/apps/transmission-tv/media:/downloads/complete
-      - transmission-tv-downloads-incomplete:/downloads/incomplete
-    tmpfs:
-      - /var/run/s6:rw,exec
-
+      - 9091
+    sysctls:
+      - "net.ipv6.conf.all.disable_ipv6=0"
   
 
-  transmission-books:
-    container_name: transmission-books
-    # alpine
-    image: lscr.io/linuxserver/transmission:latest
-    cap_drop:
-      - ALL
-    cap_add:
-      - SETUID
-      - SETGID
-      - CHOWN
-    networks:
-      - proxy
-      - transmission-books
-    restart: always
-    environment:
-      - NETWORK_ACCESS=internal
-      - S6_READ_ONLY_ROOT=1
-      - PUID=64999
-      - PGID=64999
-      - VIRTUAL_HOST=books.erdos.local
-      - VIRTUAL_PORT=9091
-    expose:
-      - 9091 # webui
-    ports:
-      - "41414:51413/tcp" # p2p traffic
-      - "41414:51413/udp" # p2p traffic
-    volumes:
-      - /volume1/docker_app_data/apps/transmission-books/config:/config
-      - /volume1/docker_app_data/apps/transmission-books/media:/downloads/complete
-      - transmission-books-downloads-incomplete:/downloads/incomplete
-    tmpfs:
-      - /var/run/s6:rw,exec
 
 
+        #  vpn:
+        #    # dev tag *only* includes vpn functionality
+        #    image: haugene/transmission-openvpn:dev
+        #    environment:
+        #      - OPENVPN_PROVIDER=custom
+        #        #LOCAL_NETWORK=192.168.0.0/16
+        #    cap_add:
+        #      - NET_ADMIN
+        #    container_name: vpn
+        #    volumes:
+        #      #- /volume1/data/docker/apps/vpn/config/mullvad_ch_zrh.ovpn:/config/config.ovpn:ro
+        #        #- /volume1/data/docker/apps/vpn/config/auth.txt:/config/auth.txt:ro
+        #        #- /volume1/data/docker/apps/vpn/config/auth.txt:/config/openvpn-credentials.txt:ro
+        #      - /volume1/data/docker/apps/vpn/config:/etc/openvpn/custom
+        #      - /volume1/data/docker/apps/vpn/config/mullvad_userpass.txt:/config/openvpn-credentials.txt:ro
+        #    # ipv6 must be enabled for Mullvad to work
+        #    networks:
+        #      - vpn
+        #    sysctls:
+        #      - "net.ipv6.conf.all.disable_ipv6=0"
+        #    expose:
+        #      # transmission maybe?
+        #      - 9091
+        #    ports:
+        #      # inbound ports
+        #      - 55880:55880/tcp
+        #      - 55880:55880/udp
+        #      - 58320:58320/tcp
+        #      - 58320:58320/udp
+
+
+        #  transmission-movies:
+        #    container_name: transmission-movies
+        #    # alpine
+        #    image: lscr.io/linuxserver/transmission:latest
+        #    restart: always
+        #    depends_on: 
+        #      - vpn
+        #    environment:
+        #      - NETWORK_ACCESS=internal
+        #      - PUID=64999
+        #      - PGID=64999
+        #      - VIRTUAL_HOST=movies.erdos.local
+        #      - VIRTUAL_PORT=9091
+        #    network_mode: "container:vpn"
+        #    #expose:
+        #      #- "9091" # webui
+        #        #ports:
+        #        #  - "58320:51413/tcp" # p2p traffic
+        #        #  - "58320:51413/udp" # p2p traffic
+        #    volumes:
+        #      - /volume1/data/docker/apps/transmission-movies/config:/config
+        #      - /volume1/data/docker/apps/transmission-movies/media:/downloads/complete
+        #      - transmission-movies-downloads-incomplete:/downloads/incomplete
+        #    tmpfs:
+        #      - /var/run/s6:rw,exec
+        #  
+        #  
+        #  transmission-tv:
+        #    container_name: transmission-tv
+        #    # alpine
+        #    image: lscr.io/linuxserver/transmission:latest
+        #    depends_on: 
+        #      - vpn
+        #    restart: always
+        #    environment:
+        #      - NETWORK_ACCESS=internal
+        #      - PUID=64999
+        #      - PGID=64999
+        #      - VIRTUAL_HOST=tv.erdos.local
+        #      - VIRTUAL_PORT=9091
+        #    network_mode: "container:vpn"
+        #    #expose:
+        #    #- "9091" # webui
+        #        #ports:
+        #        #  - "55880:51413/tcp" # p2p traffic
+        #        #  - "55880:51413/udp" # p2p traffic
+        #    volumes:
+        #      - /volume1/data/docker/apps/transmission-tv/config:/config
+        #      - /volume1/data/docker/apps/transmission-tv/media:/downloads/complete
+        #      - transmission-tv-downloads-incomplete:/downloads/incomplete
+        #    tmpfs:
+        #      - /var/run/s6:rw,exec
+        #
+  
+        #movies:
+        #  image: lscr.io/linuxserver/transmission
+        #  container_name: transmission
+        #  environment:
+        #    - PUID=1000
+        #    - PGID=1000
+        #    - TZ=Europe/London
+        #    - TRANSMISSION_WEB_HOME=/combustion-release/ #optional
+        #    - USER=username #optional
+        #    - PASS=password #optional
+        #    - WHITELIST=iplist #optional
+        #    - HOST_WHITELIST=dnsnane list #optional
+        #    - OPENVPN_PROVIDER=custom
+        #    - LOCAL_NETWORK=192.168.0.0/16
+        #  volumes:
+        #    - <path to data>:/config
+        #    - <path to downloads>:/downloads
+        #    - <path to watch folder>:/watch
+        #  ports:
+        #    - 9091:9091
+        #    - 51413:51413
+        #    - 51413:51413/udp
+        #  restart: unless-stopped
 
   # movie player
   # @TODO try to put this in bridge networking?
@@ -199,23 +239,16 @@ services:
     container_name: plex
     image: lscr.io/linuxserver/plex:latest
     network_mode: host
-    cap_drop:
-      - ALL
-    cap_add:
-      - SETGID
-      - SETUID
-      - CHOWN
     environment:
       - NETWORK_ACCESS=internal
-      - S6_READ_ONLY_ROOT=1 # https://github.com/just-containers/s6-overlay/pull/176
       - PUID=64999
       - PGID=64999
       - VERSION=docker
       - ADVERTISE_IP=http://10.0.1.10:32400/
     volumes:
-      - /volume1/docker_app_data/apps/plex/config:/config
-      - /volume1/docker_app_data/apps/transmission-tv/media:/tv:ro
-      - /volume1/docker_app_data/apps/transmission-movies/media:/movies:ro
+      - /volume1/data/docker/apps/plex/config:/config
+      - /volume1/data/docker/apps/transmission-tv/media:/tv:ro
+      - /volume1/data/docker/apps/transmission-movies/media:/movies:ro
     tmpfs:
       - /var/run/s6:exec
       - /app
@@ -227,29 +260,17 @@ services:
   radarr:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
-    networks:
-      - proxy
-      - radarr
-      - jackett
-      - transmission-movies
-    cap_drop:
-      - ALL
-    cap_add:
-      - SETUID
-      - SETGID
-      - CHOWN
     environment:
       - NETWORK_ACCESS=internal
-      - S6_READ_ONLY_ROOT=1 # https://github.com/just-containers/s6-overlay/pull/176
       - PUID=64999
       - PGID=64999
       - TZ=Europe/London
       - VIRTUAL_HOST=radarr.erdos.local
       - VIRTUAL_PORT=7878
     volumes:
-      - /volume1/docker_app_data/apps/raddarr/config:/config
-      - /volume1/docker_app_data/apps/transmission-movies/media:/movies:ro
-      - /volume1/docker_app_data/apps/transmission-movies/media:/downloads/complete:ro
+      - /volume1/data/docker/apps/raddarr/config:/config
+      - /volume1/data/docker/apps/transmission-movies/media:/movies:ro
+      - /volume1/data/docker/apps/transmission-movies/media:/downloads/complete:ro
     expose:
       - 7878 
     restart: unless-stopped
@@ -259,29 +280,17 @@ services:
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
-    networks:
-      - proxy
-      - sonarr
-      - jackett
-      - transmission-tv
-    cap_drop:
-      - ALL
-    cap_add:
-      - SETUID
-      - SETGID
-      - CHOWN
     environment:
       - NETWORK_ACCESS=internal
-      - S6_READ_ONLY_ROOT=1 # https://github.com/just-containers/s6-overlay/pull/176
       - PUID=64999
       - PGID=64999
       - TZ=Europe/London
       - VIRTUAL_HOST=sonarr.erdos.local
       - VIRTUAL_PORT=8989
     volumes:
-      - /volume1/docker_app_data/apps/sonarr/config:/config
-      - /volume1/docker_app_data/apps/transmission-tv/media:/tv:ro
-      - /volume1/docker_app_data/apps/transmission-tv/media:/downloads/complete:ro
+      - /volume1/data/docker/apps/sonarr/config:/config
+      - /volume1/data/docker/apps/transmission-tv/media:/tv:ro
+      - /volume1/data/docker/apps/transmission-tv/media:/downloads/complete:ro
     expose:
       - 8989
     restart: unless-stopped
@@ -291,20 +300,8 @@ services:
     image: lscr.io/linuxserver/jackett:latest
     container_name: jackett
     volumes:
-      - /volume1/docker_app_data/apps/jackett/config:/config
-    networks:
-      - proxy
-      - jackett
-      - sonarr
-      - radarr
-    cap_drop:
-      - ALL
-    cap_add:
-      - SETUID
-      - SETGID
-      - CHOWN
+      - /volume1/data/docker/apps/jackett/config:/config
     environment:
-      - S6_READ_ONLY_ROOT=1
       - NETWORK_ACCESS=internal
       - PUID=64999
       - PGID=64999
@@ -319,17 +316,7 @@ services:
   bazarr:
     image: lscr.io/linuxserver/bazarr:latest
     container_name: bazarr
-    cap_drop:
-      - ALL
-    cap_add:
-      - SETUID
-      - SETGID
-      - CHOWN
-    networks:
-      - proxy
-      - bazarr
     environment:
-      - S6_READ_ONLY_ROOT=1
       - NETWORK_ACCESS=internal
       - PUID=64999
       - PGID=64999
@@ -337,9 +324,9 @@ services:
       - VIRTUAL_HOST=bazarr.erdos.local
       - VIRTUAL_PORT=6767
     volumes:
-      - /volume1/docker_app_data/apps/bazarr/config:/config
-      - /volume1/docker_app_data/apps/transmission-tv/media:/tv
-      - /volume1/docker_app_data/apps/tranmission-movies/media:/movies
+      - /volume1/data/docker/apps/bazarr/config:/config
+      - /volume1/data/docker/apps/transmission-tv/media:/tv
+      - /volume1/data/docker/apps/tranmission-movies/media:/movies
     expose:
       - 6767
     restart: always
@@ -349,17 +336,7 @@ services:
     #image: lscr.io/linuxserver/ombi
     image: linuxserver/ombi:latest
     container_name: ombi
-    cap_drop:
-      - ALL
-    cap_add:
-      - SETUID
-      - SETGID
-      - CHOWN
-    networks: 
-      - ombi
-      - proxy
     environment:
-      - S6_READ_ONLY_ROOT=1
       - NETWORK_ACCESS=internal
       - PUID=64999
       - PGID=64999
@@ -368,7 +345,7 @@ services:
       - VIRTUAL_HOST=ombi.erdos.local
       - VIRTUAL_PORT=3579
     volumes:
-      - /volume1/docker_app_data/apps/ombi/config:/config
+      - /volume1/data/docker/apps/ombi/config:/config
     expose: 
       - 3579
     restart: unless-stopped
@@ -429,22 +406,7 @@ volumes:
   db_data:
   redis_data:
   # BOBARR
+  copy_openvpn_config:
 
 networks:
-  transmission-movies:
-  transmission-tv:
-  transmission-books:
-  jackett:
-  sonarr:
-  radarr:
-  organizr:
-    #plex:
-  wireguard:
-  transmission-vpn-movies:
-  transmission-vpn-tv:
-  proxy:
-  whoami:
-  plex:
-  bazarr:
-  ombi:
   vpn:
