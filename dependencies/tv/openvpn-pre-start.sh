@@ -22,8 +22,8 @@ IFS=$'\n\t'
 # MAIN ##################
 function main(){
 
-  local -r src='/readonly_mullvad_us_nyc.ovpn'
-  local -r dest='/etc/openvpn/custom/mullvad_us_nyc.ovpn'
+  local -r src='/readonly_vpn_config.ovpn'
+  local -r dest='/etc/openvpn/custom/vpn_config.ovpn'
   local -r dest_dirpath="$( dirname "${dest}" )"
     
   mkdir -p "${dest_dirpath}"
