@@ -218,12 +218,18 @@ services:
       - PUID=1026
       - PGID=100
       - TZ=Europe/London
-      - VIRTUAL_HOST=radarr.erdos.local,moviewatcher.erdos.local,radarr.erdos.remote
+      - VIRTUAL_HOST=radarr.erdos.local,moviewatcher.erdos.local,radarr.erdos.remote,moviewatcher.erdos.remote
       - VIRTUAL_PORT=7878
     volumes:
       - /volume1/data/docker/apps/radarr/config:/config
-      - /volume1/data/docker/apps/transmission-movies/media:/movies:ro
+      - /volume1/data/docker/apps/transmission-movies/media-organized:/data/media-organized
       - /volume1/data/docker/apps/transmission-movies/data/completed:/data/completed # mount download client movies here: documented in the UI
+
+
+        #/volume1/data/docker/apps/transmission-movies/data/watch:/data/watch
+
+
+        #- /volume1/data/docker/apps/transmission-movies/media:/movies:ro
     expose:
       - 7878 
     restart: unless-stopped
@@ -251,8 +257,7 @@ services:
       - VIRTUAL_PORT=8989
     volumes:
       - /volume1/data/docker/apps/sonarr/config:/config
-        #- /volume1/data/docker/apps/transmission-tv/media:/tv:ro
-      - /volume1/data/docker/apps/transmission-tv/media-organized:/media-organized
+      - /volume1/data/docker/apps/transmission-tv/media-organized:/data/media-organized
       - /volume1/data/docker/apps/transmission-tv/data/completed:/data/completed
     expose:
       - 8989
@@ -309,8 +314,12 @@ services:
       - chown
     volumes:
       - /volume1/data/docker/apps/bazarr/config:/config
-      - /volume1/data/docker/apps/transmission-tv/data/completed:/tv:ro
-      - /volume1/data/docker/apps/transmission-movies/data/completed:/movies:ro
+        #- /volume1/data/docker/apps/transmission-tv/data/completed:/tv:ro
+        #- /volume1/data/docker/apps/transmission-movies/data/completed:/movies:ro
+      - /volume1/data/docker/apps/transmission-tv/media-organized:/tv:ro
+      - /volume1/data/docker/apps/transmission-movies/media-organized:/movies:ro
+      - /volume1/data/docker/apps/bazarr/downloaded_subtitles:/subtitles
+        # https://wiki.bazarr.media/Additional-Configuration/Settings/#sonarr
     expose:
       - 6767
     restart: always
@@ -342,7 +351,23 @@ services:
       - 3579
     restart: unless-stopped
 
-
+    #openvpn:
+    #  image: ghcr.io/linuxserver/openvpn-as
+    #  container_name: openvpn
+    #  cap_add:
+    #    - NET_ADMIN
+    #  environment:
+    #    - PUID=1000
+    #    - PGID=1000
+    #    - TZ=Europe/London
+    #    - INTERFACE=eth0 #optional
+    #  volumes:
+    #    - <path to data>:/config
+    #  ports:
+    #    - 943:943
+    #    - 9443:9443
+    #    - 1194:1194/udp
+    #  restart: unless-stopped
 
 
 volumes:
