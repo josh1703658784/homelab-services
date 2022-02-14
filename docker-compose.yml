@@ -189,8 +189,12 @@ services:
       - ADVERTISE_IP=http://192.168.12.184:32400/
     volumes:
       - /volume1/data/docker/apps/plex/config:/config
-      - /volume1/data/docker/apps/transmission-tv/data/completed:/tv:ro
-      - /volume1/data/docker/apps/transmission-movies/data/completed:/movies:ro
+
+        #- /volume1/data/docker/apps/transmission-tv/data/completed:/tv:ro
+        #- /volume1/data/docker/apps/transmission-movies/data/completed:/movies:ro
+
+      - /volume1/data/docker/apps/transmission-tv/media-organized:/tv-organized:ro
+      - /volume1/data/docker/apps/transmission-movies/media-organized:/movies-organized:ro
     tmpfs:
       - /var/run/s6:exec
       - /app
@@ -293,6 +297,20 @@ services:
     expose: 
       - 9117
 
+        #    # @TODO REPLACE JACKETT WITH THIS
+        #  prowlarr:
+        #    image: lscr.io/linuxserver/prowlarr
+        #    container_name: prowlarr
+        #    environment:
+        #      - PUID=1000
+        #      - PGID=1000
+        #      - TZ=Europe/London
+        #        #volumes:
+        #        #- /path/to/data:/config
+        #        #ports:
+        #        #- 9696:9696
+        #    restart: unless-stopped
+
 
   # bazarr
   # find subtitles
@@ -303,7 +321,7 @@ services:
       - NETWORK_ACCESS=internal
       - PUID=1026
       - PGID=100
-      - TZ=Europe/London
+      - TZ=America/New_York
       - VIRTUAL_HOST=bazarr.erdos.local,subtitles.erdos.local,bazarr.erdos.remote
       - VIRTUAL_PORT=6767
     cap_drop:
@@ -325,49 +343,43 @@ services:
     restart: always
 
 
-  # ombi
-  requests:
-    #image: lscr.io/linuxserver/ombi
-    image: linuxserver/ombi:latest
-    #container_name: ombi
-    cap_drop:
-      - all
-    cap_add:
-      - setgid
-      - setuid
-      - chown
+  overseerr:
+    image: lscr.io/linuxserver/overseerr
+    #container_name: overseerr
     environment:
       - NETWORK_ACCESS=internal
       - PUID=1026
-      - PGID=100
-      - TZ=Europe/London
-        #- BASE_URL=/ombi #optional
-      - VIRTUAL_HOST=ombi.erdos.local,requests.erdos.local,ombi.erdos.remote
-      - VIRTUAL_PORT=3579
-      - BASE_URL=/ombi #optional
+      - PGID=1000
+      - TZ=America/New_York
+      - VIRTUAL_HOST=overseerr.erdos.local,requests.erdos.local,overseerr.erdos.remote
     volumes:
-      - /volume1/data/docker/apps/ombi/config:/config
-    expose: 
-      - 3579
+      - /volume1/data/docker/apps/overseerr/config:/config
+        #ports:
+        #- 5055:5055
+    expose:
+      - 5055
     restart: unless-stopped
 
-    #openvpn:
-    #  image: ghcr.io/linuxserver/openvpn-as
-    #  container_name: openvpn
-    #  cap_add:
-    #    - NET_ADMIN
-    #  environment:
-    #    - PUID=1000
-    #    - PGID=1000
-    #    - TZ=Europe/London
-    #    - INTERFACE=eth0 #optional
-    #  volumes:
-    #    - <path to data>:/config
-    #  ports:
-    #    - 943:943
-    #    - 9443:9443
-    #    - 1194:1194/udp
-    #  restart: unless-stopped
+
+    # Bypasses Cloud Flare
+  flaresolverr:
+    # DockerHub mirror flaresolverr/flaresolverr:latest
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    environment:
+      - NETWORK_ACCESS=internal
+        #- LOG_LEVEL=${LOG_LEVEL:-info}
+        #- LOG_HTML=${LOG_HTML:-false}
+      - CAPTCHA_SOLVER=anticaptcha
+      - ANTI_CAPTCHA_APIKEY=123456789
+      - TZ=America/New_York
+      - VIRTUAL_HOST=flaresolverr.erdos.local,flare.erdos.local,flare.erdos.remote
+        #ports:
+        #- "${PORT:-8191}:8191"
+    expose:
+      - 8191
+    restart: unless-stopped 
+
+
 
 
 volumes:
