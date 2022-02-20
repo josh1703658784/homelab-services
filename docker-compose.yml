@@ -29,6 +29,16 @@ services:
     # @TODO split into two containers: https://github.com/nginx-proxy/nginx-proxy#separate-containers
     image: jwilder/nginx-proxy:alpine # alpine latest image
     read_only: true
+    networks:
+      - proxy__whoami
+      - proxy__movies
+      - proxy__tv
+      - proxy__movie_watcher
+      - proxy__tv_watcher
+      - proxy__feed_reader
+      - proxy__subtitles
+      - proxy__overseerr
+      - proxy__flaresolverr
     tmpfs:
       - /etc/nginx/dhparam/
       - /var/cache/nginx/client_temp/
@@ -58,6 +68,8 @@ services:
   whoami:
     # alpine
     image: "jwilder/whoami:latest"
+    networks:
+      - proxy__whoami
     read_only: true
     cap_drop:
       - all
@@ -74,6 +86,8 @@ services:
   movies:
     # @TODO FORK DOCERFILE AND MAKE BASH SCRIPTS STRICT FOR QUICK FAILURE
     image: haugene/transmission-openvpn
+    networks:
+      - proxy__movies
     cap_drop:
       - ALL
     cap_add:
@@ -135,6 +149,8 @@ services:
 
   tv:
     image: haugene/transmission-openvpn
+    networks:
+      - proxy__tv
     cap_drop:
       - ALL
     cap_add:
@@ -207,6 +223,8 @@ services:
   movie-watcher:
     image: lscr.io/linuxserver/radarr:latest
     #read_only: true
+    networks:
+      - proxy__movie_watcher
     tmpfs:
       - /var/run/s6:exec,rw
     cap_drop:
@@ -243,6 +261,8 @@ services:
   # sonarr
   tv-watcher:
     image: lscr.io/linuxserver/sonarr:latest
+    networks:
+      - proxy__tv_watcher
     cap_drop:
       - all
     cap_add:
@@ -273,6 +293,9 @@ services:
   feed-reader:
     image: lscr.io/linuxserver/jackett:latest
     #container_name: jackett
+    networks:
+      - proxy__feed_reader
+    #  - feed_reader_flaresolverr
     cap_drop:
       - all
     cap_add:
@@ -317,6 +340,8 @@ services:
   subtitles:
     image: lscr.io/linuxserver/bazarr:latest
     #container_name: bazarr
+    networks:
+      - proxy__subtitles
     environment:
       - NETWORK_ACCESS=internal
       - PUID=1026
@@ -346,12 +371,16 @@ services:
   overseerr:
     image: lscr.io/linuxserver/overseerr
     #container_name: overseerr
+    networks:
+      - proxy__overseerr
     environment:
       - NETWORK_ACCESS=internal
       - PUID=1026
       - PGID=1000
       - TZ=America/New_York
       - VIRTUAL_HOST=overseerr.erdos.local,requests.erdos.local,overseerr.erdos.remote
+        #networks:
+        #  - proxy_overseerr
     volumes:
       - /volume1/data/docker/apps/overseerr/config:/config
         #ports:
@@ -365,6 +394,8 @@ services:
   flaresolverr:
     # DockerHub mirror flaresolverr/flaresolverr:latest
     image: ghcr.io/flaresolverr/flaresolverr:latest
+    networks:
+      - proxy__flaresolverr
     environment:
       - NETWORK_ACCESS=internal
         #- LOG_LEVEL=${LOG_LEVEL:-info}
@@ -412,5 +443,17 @@ volumes:
   #redis_data:
   ## BOBARR
 
-  #  #networks:
-  #  #  vpn:
+#networks:
+#  vpn:
+networks:
+  proxy__whoami:
+  proxy__movies:
+  proxy__tv:
+  proxy__movie_watcher:
+  proxy__tv_watcher:
+  proxy__feed_reader:
+  proxy__subtitles:
+  proxy__overseerr:
+  proxy__flaresolverr:
+
+
