@@ -31,18 +31,6 @@ services:
     # @TODO split into two containers: https://github.com/nginx-proxy/nginx-proxy#separate-containers
     image: jwilder/nginx-proxy:alpine # alpine latest image
     read_only: true
-    #networks:
-    #  - proxy__whoami
-    #  - proxy__movies
-    #  - proxy__tv
-    #  - proxy__movie_watcher
-    #  - proxy__tv_watcher
-    #  - proxy__feed_reader
-    #  - proxy__subtitles
-    #  - proxy__overseerr
-    #  - proxy__flaresolverr
-    #  - proxy__jackett
-    #  - proxy__prowlarr
     tmpfs:
       - /etc/nginx/dhparam/
       - /var/cache/nginx/client_temp/
@@ -72,8 +60,6 @@ services:
   whoami:
     # alpine
     image: "jwilder/whoami:latest"
-    #networks:
-    #  - proxy__whoami
     read_only: true
     cap_drop:
       - all
@@ -86,56 +72,8 @@ services:
       - VIRTUAL_PORT=8000
 
 
-        #  deprecated-transmission-movies:
-        #    # @TODO FORK DOCKERFILE AND MAKE BASH SCRIPTS STRICT FOR QUICK FAILURE
-        #    image: haugene/transmission-openvpn
-        #    #networks:
-        #    #  - proxy__movies
-        #    #  - transmission_movies__radarr
-        #    cap_drop:
-        #      - ALL
-        #    cap_add:
-        #      - net_admin     # DOCUMENTED REQUIREMENT
-        #      - mknod         # ALLOWS CREATION OF TUN/TAP IN /dev/net/tun
-        #      - net_raw       # FOR PING IN HEALTHCHECK
-        #      - setgid        # @TODO REVOLVE THIS WITH A FORKED DOCKERFILE
-        #      - dac_override  # @TODO HIGH VULN, FIX WITH FORKED DOCKERFILE
-        #        #read_only: true
-        #    volumes:
-        #      - /volume1/data/docker/apps/transmission-movies/data/watch:/data/watch:ro
-        #      - /volume1/data/docker/apps/transmission-movies/data/completed:/data/completed
-        #      - /volume1/data/docker/apps/transmission-movies/data/incomplete:/data/incomplete
-        #      - /volume1/data/docker/apps/transmission-movies/data/transmission-home:/data/transmission-home
-        #      - /volume1/data/docker/apps/vpn/config/openvpn-pre-start.sh:/scripts/openvpn-pre-start.sh:ro
-        #      - /volume1/data/docker/apps/vpn/config/mullvad_userpass.txt:/config/openvpn-credentials.txt:ro
-        #      - /volume1/data/docker/apps/vpn/config/mullvad_ch_zrh.ovpn:/readonly_vpn_config.ovpn:ro
-        #    environment:
-        #      - NETWORK_ACCESS=internal
-        #      - VIRTUAL_HOST=movies.erdos.local,movieswatcher.erdos.local,movies.erdos.remote
-        #      - VIRTUAL_PORT=9091
-        #      - OPENVPN_PROVIDER=custom
-        #      - OPENVPN_CONFIG=vpn_config
-        #      - LOCAL_NETWORK=192.168.12.0/24
-        #      - TRANSMISSION_PEER_PORT=54839
-        #      - TRANSMISSION_PORT_FORWARDING_ENABLED=true
-        #      - TRANSMISSION_ENCRYPTION=1 # prefer encrypted connections but not required
-        #      - TRANSMISSION_PREFETCH_ENABLED=true
-        #      - DROP_DEFAULT_ROUTE=true # maybe works, maybe breaks
-        #      - LOG_TO_STDOUT=true
-        #      - S6_READ_ONLY_ROOT=1
-        #    restart: always
-        #    expose:
-        #      - 9091
-        #    sysctls:
-        #      - "net.ipv6.conf.all.disable_ipv6=0"
-
-
-  # formerly transmission-tv
   transmission:
     image: haugene/transmission-openvpn
-    #networks:
-    #  - proxy__tv
-    #  - transmission_tv__sonarr
     cap_drop:
       - ALL
     cap_add:
@@ -148,7 +86,6 @@ services:
       - /tmp
     restart: always
     volumes:
-      #- /volume1/data/docker/apps/transmission/data/watch:/data/watch
       - /volume1/data/docker/apps/transmission/data/completed:/data/completed
       - /volume1/data/docker/apps/transmission/data/incomplete:/data/incomplete
       - /volume1/data/docker/apps/transmission/data/transmission-home:/data/transmission-home
@@ -177,9 +114,8 @@ services:
       - "net.ipv6.conf.all.disable_ipv6=0"
 
   # media player
-  # @TODO try to put this in bridge networking?
+  # @TODO try to put this in bridge networking
   plex:
-    #container_name: plex
     image: lscr.io/linuxserver/plex:latest
     network_mode: host
     environment:
@@ -190,10 +126,6 @@ services:
       - ADVERTISE_IP=http://192.168.12.184:32400/
     volumes:
       - /volume1/data/docker/apps/plex/config:/config
-
-        #- /volume1/data/docker/apps/transmission-tv/data/completed:/tv:ro
-        #- /volume1/data/docker/apps/transmission-movies/data/completed:/movies:ro
-
       - /volume1/data/docker/apps/sonarr/media-organized:/tv-organized:ro
       - /volume1/data/docker/apps/radarr/media-organized:/movies-organized:ro
     tmpfs:
@@ -202,23 +134,12 @@ services:
       - /defaults
 
 
-  # Manages your movie library
   # @TODO pin down basic hardening
   # movie
   radarr:
     image: lscr.io/linuxserver/radarr:latest
-    #read_only: true
-    #networks:
-    #  - proxy__movie_watcher
-    #  - transmission_movies__radarr
-    #  - jackett__radarr
-    #  - subtitles__radarr
-    #  - overseerr__radarr
     tmpfs:
       - /var/run/s6:exec,rw
-        #- /app/radarr/bin:exec,rw
-        #  - /app:rw
-        #  - /defaults:rw
     cap_drop:
       - all
     cap_add:
@@ -236,38 +157,17 @@ services:
       - VIRTUAL_PORT=7878
     volumes:
       - /volume1/data/docker/apps/radarr/config:/config
-      #- /volume1/data/docker/apps/transmission-movies/media-organized:/data/media-organized
-      #- /volume1/data/docker/apps/transmission-movies/data/completed:/data/completed # mount download client movies here: documented in the UI
-      #- /volume1/data/docker/apps/transmission/media-organized:/data/media-organized
       - /volume1/data/docker/apps/radarr/media-organized:/data/media-organized
-        #- /volume1/data/docker/apps/transmission-tv/data/completed:/data/completed # mount download client movies here: documented in the UI
       - /volume1/data/docker/apps/transmission/data/completed/:/data/completed/
     expose:
       - 7878 
-        #restart: never #unless-stopped
-        #tmpfs:
-        #- /var/run/s6/etc/cont-init.d/
-        #- /run
-        #- /var/run
-        #- /var/run/s6/etc
-
-
-        #/volume1/data/docker/apps/transmission-movies/data/watch:/data/watch
-
-
-        #- /volume1/data/docker/apps/transmission-movies/media:/movies:ro
+    restart: never #unless-stopped
 
 
   # Manages your TV library
   # sonarr
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
-    #networks:
-    #  - proxy__tv_watcher
-    #  - jackett__sonarr
-    #  - transmission_tv__sonarr
-    #  - subtitles__sonarr
-    #  - overseerr_sonarr
     cap_drop:
       - all
     cap_add:
@@ -286,7 +186,6 @@ services:
       - VIRTUAL_PORT=8989
     volumes:
       - /volume1/data/docker/apps/sonarr/config:/config
-        #- /volume1/data/docker/apps/transmission/media-organized:/data/media-organized
       - /volume1/data/docker/apps/sonarr/media-organized:/data/media-organized
       - /volume1/data/docker/apps/transmission/data/completed:/data/completed
     expose:
@@ -296,9 +195,6 @@ services:
 
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:develop
-    #networks:
-    #  - proxy__prowlarr
-    environment:
       - PUID=1026
       - PGID=100
       - S6_READ_ONLY_ROOT=1
@@ -311,50 +207,11 @@ services:
       - /volume1/data/docker/apps/prowlarr/config:/config
     restart: unless-stopped
 
-  # jackett
-  # feed reader
-  #jackett:
-  #  image: lscr.io/linuxserver/jackett:latest
-  #  #container_name: jackett
-  #  #networks:
-  #  #  - proxy__jackett
-  #  #  - jackett__radarr
-  #  #  - jackett__sonarr
-  #  #  - jackett__flaresolverr
-  #  ##  - feed_reader_flaresolverr
-  #  cap_drop:
-  #    - all
-  #  cap_add:
-  #    - setgid
-  #    - setuid
-  #    - chown
-  #  tmpfs:
-  #    - /var/run/s6:exec,rw
-  #  volumes:
-  #    - /volume1/data/docker/apps/jackett/config:/config
-  #    - /volume1/data/docker/apps/jackett/downloads_blackhole:/downloads # idk it's in the docs, find out what this is for later
-  #    # ^^^ https://docs.linuxserver.io/images/docker-jackett#usage ^^^
-  #  environment:
-  #    - S6_READ_ONLY_ROOT=1
-  #    - NETWORK_ACCESS=internal
-  #    - PUID=1026
-  #    - PGID=100
-  #    - TZ=Europe/London
-  #    - AUTO_UPDATE=true #optional
-  #    - VIRTUAL_HOST=jackett.erdos.local,feed.erdos.local,jackett.erdos.remote,feed.erdos.remote
-  #    - VIRTUAL_PORT=9117
-  #  expose: 
-  #    - 9117
-
 
   # bazarr
   # find subtitles
   bazarr:
     image: lscr.io/linuxserver/bazarr:latest
-    #networks:
-    #  - proxy__subtitles
-    #  - subtitles__sonarr
-    #  - subtitles__radarr
     environment:
       - NETWORK_ACCESS=internal
       - PUID=1026
@@ -373,7 +230,6 @@ services:
       - /volume1/data/docker/apps/bazarr/downloaded_subtitles:/subtitles
       - /volume1/data/docker/apps/sonarr/media-organized:/tv
       - /volume1/data/docker/apps/radarr/media-organized:/movies
-        # https://wiki.bazarr.media/Additional-Configuration/Settings/#sonarr
     expose:
       - 6767
     restart: always
