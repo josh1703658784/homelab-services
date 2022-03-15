@@ -381,11 +381,14 @@ services:
 
   overseerr:
     image: lscr.io/linuxserver/overseerr
-    #networks:
-    #  - proxy__overseerr
-    #  - overseerr__radarr
-    #  - overseerr_sonarr
+    cap_drop:
+      - ALL
+    cap_add:
+      - setgid
+      - setuid
+      - chown
     environment:
+      - S6_READ_ONLY_ROOT=1
       - NETWORK_ACCESS=internal
       - PUID=1026
       - PGID=1000
