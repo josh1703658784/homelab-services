@@ -398,12 +398,15 @@ services:
     restart: unless-stopped
 
 
-    #  # Bypasses Cloud Flare
+  # Bypasses Cloud Flare
   flaresolverr:
-    image: ghcr.io/flaresolverr/flaresolverr:v1.2.9 #latest
-    #networks:
-    #  - proxy__flaresolverr
-    #  - jackett__flaresolverr
+    image: ghcr.io/flaresolverr/flaresolverr:v1.2.9 # prowlerr does not support v2
+    user: "nobody:nobody"
+    read_only: true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp
     environment:
       - NETWORK_ACCESS=internal
         #- CAPTCHA_SOLVER=anticaptcha
@@ -412,34 +415,10 @@ services:
       - VIRTUAL_HOST=flaresolverr.erdos.local,flare.erdos.local,flare.erdos.remote
     expose:
       - 8191
-        #restart: unless-stopped 
+    restart: unless-stopped 
 
 
 
 
 volumes:
   copy_openvpn_config:
-
-    #networks:
-    #  proxy__whoami:
-    #  proxy__movies:
-    #  proxy__tv:
-    #  proxy__movie_watcher:
-    #  proxy__tv_watcher:
-    #  proxy__feed_reader:
-    #  proxy__subtitles:
-    #  proxy__overseerr:
-    #  proxy__flaresolverr:
-    #  proxy__jackett:
-    #  transmission_movies__radarr:
-    #  jackett__radarr:
-    #  jackett__sonarr:
-    #  jackett__flaresolverr:
-    #  transmission_tv__sonarr:
-    #  subtitles__sonarr:
-    #  subtitles__radarr:
-    #  overseerr__radarr:
-    #  overseerr_sonarr:
-    #  proxy__prowlarr:
-    #
-    #
