@@ -123,7 +123,9 @@ services:
       - PUID=1026
       - PGID=100
       - VERSION=docker
-      - ADVERTISE_IP=http://192.168.12.184:32400/
+        #- ADVERTISE_IP=http://192.168.12.184:32400/
+      - ADVERTISE_IP=http://plex.erdos.local:32400/
+      - ALLOWED_NETWORKS=192.168.12.0/8  #192.168.1.0/24
     volumes:
       - /volume1/data/docker/apps/plex/config:/config
       - /volume1/data/docker/apps/sonarr/media-organized:/tv-organized:ro
@@ -161,7 +163,6 @@ services:
       - /volume1/data/docker/apps/transmission/data/completed/:/data/completed/
     expose:
       - 7878 
-    restart: never #unless-stopped
 
 
   # Manages your TV library
@@ -195,6 +196,7 @@ services:
 
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:develop
+    environment:
       - PUID=1026
       - PGID=100
       - S6_READ_ONLY_ROOT=1
