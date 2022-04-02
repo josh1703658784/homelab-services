@@ -41,6 +41,7 @@ services:
       - /var/run/
       - /etc/nginx/conf.d/
       - /etc/nginx/certs/
+      - /tmp
     cap_drop:
       - all
     cap_add:
@@ -130,6 +131,8 @@ services:
       - /volume1/data/docker/apps/plex/config:/config
       - /volume1/data/docker/apps/sonarr/media-organized:/tv-organized:ro
       - /volume1/data/docker/apps/radarr/media-organized:/movies-organized:ro
+    tmpfs:
+      - /tmp
         #tmpfs:
         #  - /var/run/s6:exec
         #  - /app
@@ -139,7 +142,8 @@ services:
   # @TODO pin down basic hardening
   # movie
   radarr:
-    image: lscr.io/linuxserver/radarr:latest
+    image: lscr.io/linuxserver/latest
+      #user: '1026'
     tmpfs:
       - /var/run/s6:exec,rw
     cap_drop:
@@ -161,8 +165,10 @@ services:
       - /volume1/data/docker/apps/radarr/config:/config
       - /volume1/data/docker/apps/radarr/media-organized:/data/media-organized
       - /volume1/data/docker/apps/transmission/data/completed/:/data/completed/
+    tmpfs:
+      - /tmp
     expose:
-      - 7878 
+      - 7878
 
 
   # Manages your TV library
@@ -177,6 +183,7 @@ services:
       - chown
     tmpfs:
       - /var/run/s6:exec,rw
+      - /tmp
     environment:
       - S6_READ_ONLY_ROOT=1
       - NETWORK_ACCESS=internal
@@ -207,6 +214,8 @@ services:
       - 9696
     volumes:
       - /volume1/data/docker/apps/prowlarr/config:/config
+    tmpfs:
+      - /tmp
     restart: unless-stopped
 
 
@@ -232,6 +241,8 @@ services:
       - /volume1/data/docker/apps/bazarr/downloaded_subtitles:/subtitles
       - /volume1/data/docker/apps/sonarr/media-organized:/tv
       - /volume1/data/docker/apps/radarr/media-organized:/movies
+    tmpfs:
+      - /tmp
     expose:
       - 6767
     restart: always
@@ -254,6 +265,8 @@ services:
       - VIRTUAL_HOST=overseerr.erdos.local,requests.erdos.local,overseerr.erdos.remote
     volumes:
       - /volume1/data/docker/apps/overseerr/config:/config
+    tmpfs:
+      - /tmp
     expose:
       - 5055
     restart: unless-stopped
@@ -278,11 +291,14 @@ services:
       - 8191
     restart: unless-stopped 
 
+
+
   minio:
     image: docker.io/bitnami/minio:2022
+    cap_drop:
+      - ALL
     ports:
       - '9000:9000' # api port
-        #- '9001:9001' # console port
     expose:
       - 9001 # console port
     environment:
@@ -294,6 +310,9 @@ services:
     volumes:
       # NOTE: As this is a non-root container, the mounted files and directories must have the proper permissions for the UID 1001.
       - /volume1/data/docker/apps/minio/data:/data
+      - /volume1/data/docker/apps/minio/config:/root/.minio
+    tmpfs:
+      - /tmp
 
 volumes:
   copy_openvpn_config:
