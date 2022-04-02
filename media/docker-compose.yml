@@ -119,7 +119,7 @@ services:
     image: lscr.io/linuxserver/plex:latest
     network_mode: host
     environment:
-      - NETWORK_ACCESS=internal
+      #- NETWORK_ACCESS=internal
       - PUID=1026
       - PGID=100
       - VERSION=docker
@@ -130,10 +130,10 @@ services:
       - /volume1/data/docker/apps/plex/config:/config
       - /volume1/data/docker/apps/sonarr/media-organized:/tv-organized:ro
       - /volume1/data/docker/apps/radarr/media-organized:/movies-organized:ro
-    tmpfs:
-      - /var/run/s6:exec
-      - /app
-      - /defaults
+        #tmpfs:
+        #  - /var/run/s6:exec
+        #  - /app
+        #  - /defaults
 
 
   # @TODO pin down basic hardening
@@ -151,7 +151,7 @@ services:
     environment:
       - S6_READ_ONLY_ROOT=1
       - S6_BEHAVIOUR_IF_STAGE2_FAILS=2
-      - NETWORK_ACCESS=internal
+        #- NETWORK_ACCESS=internal
       - PUID=1026
       - PGID=100
       - TZ=Europe/London
@@ -278,8 +278,22 @@ services:
       - 8191
     restart: unless-stopped 
 
-
-
+  minio:
+    image: docker.io/bitnami/minio:2022
+    ports:
+      - '9000:9000' # api port
+        #- '9001:9001' # console port
+    expose:
+      - 9001 # console port
+    environment:
+      - NETWORK_ACCESS=internal
+      - VIRTUAL_HOST=minio.erdos.local,s3.erdos.local,arq.erdos.local
+      - VIRTUAL_PORT=9001
+      - MINIO_ROOT_USER=
+      - MINIO_ROOT_PASSWORD=
+    volumes:
+      # NOTE: As this is a non-root container, the mounted files and directories must have the proper permissions for the UID 1001.
+      - /volume1/data/docker/apps/minio/data:/data
 
 volumes:
   copy_openvpn_config:
