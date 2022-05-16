@@ -29,7 +29,8 @@ services:
 
   proxy:
     # @TODO split into two containers: https://github.com/nginx-proxy/nginx-proxy#separate-containers
-    image: jwilder/nginx-proxy:alpine # alpine latest image
+    #image: jwilder/nginx-proxy:alpine # alpine latest image
+    image: jwilder/nginx-proxy@sha256:fb3b9b1dfbacdfd4ae9ba3f4a0e0994cedef81738c05975909a22ebe073ade6e # alpine
     read_only: true
     tmpfs:
       - /etc/nginx/dhparam/
@@ -60,7 +61,8 @@ services:
 
   whoami:
     # alpine
-    image: "jwilder/whoami:latest"
+    #image: "jwilder/whoami:latest"
+    image: jwilder/whoami@sha256:c621c699e1becc851a27716df9773fa9a3f6bccb331e6702330057a688fd1d5a
     read_only: true
     cap_drop:
       - all
@@ -74,7 +76,9 @@ services:
 
 
   transmission:
-    image: haugene/transmission-openvpn
+    #image: haugene/transmission-openvpn
+    image: haugene/transmission-openvpn@sha256:8fbca248dbb0ec68fda347c82a95776f6f967df3fc610f25791532df842ab04a
+      #user: 1026:100 #"${UID}:${GID}"
     cap_drop:
       - ALL
     cap_add:
@@ -83,6 +87,7 @@ services:
       - net_raw       # FOR PING IN HEALTHCHECK
       - setgid        # @TODO REVOLVE THIS WITH A FORKED DOCKERFILE
       - dac_override  # @TODO HIGH VULN, FIX WITH FORKED DOCKERFILE
+      - setuid
     tmpfs:
       - /tmp
     restart: always
@@ -109,6 +114,8 @@ services:
       - TRANSMISSION_PREFETCH_ENABLED=true
       - DROP_DEFAULT_ROUTE=true # maybe works, maybe breaks
       - LOG_TO_STDOUT=true
+        #- PUID=1026
+        #- PGID=100
     expose:
       - 9091
     sysctls:
@@ -117,7 +124,8 @@ services:
   # media player
   # @TODO try to put this in bridge networking
   plex:
-    image: lscr.io/linuxserver/plex:latest
+    #image: lscr.io/linuxserver/plex:latest
+    image: lscr.io/linuxserver/plex@sha256:16818770f37cc8edf1616b03a8660d3384b62f5a93bc09fa70775baea0b80f6b
     network_mode: host
     environment:
       #- NETWORK_ACCESS=internal
@@ -127,6 +135,7 @@ services:
         #- ADVERTISE_IP=http://192.168.12.184:32400/
       - ADVERTISE_IP=http://plex.erdos.local:32400/
       - ALLOWED_NETWORKS=192.168.12.0/8  #192.168.1.0/24
+      - TZ=America/New_York
     volumes:
       - /volume1/data/docker/apps/plex/config:/config
       - /volume1/data/docker/apps/sonarr/media-organized:/tv-organized:ro
@@ -142,7 +151,8 @@ services:
   # @TODO pin down basic hardening
   # movie
   radarr:
-    image: lscr.io/linuxserver/latest
+    #image: lscr.io/linuxserver/radarr:latest
+    image: lscr.io/linuxserver/radarr@sha256:606546d01349a851d2ba9f05047d03dad888551ad67dca1e3ed1177c81d8405e
       #user: '1026'
     tmpfs:
       - /var/run/s6:exec,rw
@@ -158,12 +168,13 @@ services:
         #- NETWORK_ACCESS=internal
       - PUID=1026
       - PGID=100
-      - TZ=Europe/London
+      - TZ=America/New_York
       - VIRTUAL_HOST=radarr.erdos.local,movies.erdos.local,radarr.erdos.remote,movies.erdos.remote
       - VIRTUAL_PORT=7878
     volumes:
       - /volume1/data/docker/apps/radarr/config:/config
       - /volume1/data/docker/apps/radarr/media-organized:/data/media-organized
+      - /volume1/data/docker/apps/radarr/media-recycling-bin:/data/media-recycling-bin
       - /volume1/data/docker/apps/transmission/data/completed/:/data/completed/
     tmpfs:
       - /tmp
@@ -174,7 +185,8 @@ services:
   # Manages your TV library
   # sonarr
   sonarr:
-    image: lscr.io/linuxserver/sonarr:latest
+    #image: lscr.io/linuxserver/sonarr:latest
+    image: lscr.io/linuxserver/sonarr@sha256:49052e1ac8266cd421d5e86b2be5bed7571b41e7ff6864149011d9259421427f
     cap_drop:
       - all
     cap_add:
@@ -189,20 +201,22 @@ services:
       - NETWORK_ACCESS=internal
       - PUID=1026
       - PGID=100
-      - TZ=Europe/London
+      - TZ=America/New_York
       - VIRTUAL_HOST=sonarr.erdos.local,tv.erdos.local,sonarr.erdos.remote,tv.erdos.remote
       - VIRTUAL_PORT=8989
     volumes:
       - /volume1/data/docker/apps/sonarr/config:/config
       - /volume1/data/docker/apps/sonarr/media-organized:/data/media-organized
       - /volume1/data/docker/apps/transmission/data/completed:/data/completed
+      - /volume1/data/docker/apps/sonarr/media-recycling-bin:/data/media-recycling-bin
     expose:
       - 8989
     restart: unless-stopped
 
 
   prowlarr:
-    image: lscr.io/linuxserver/prowlarr:develop
+    #image: lscr.io/linuxserver/prowlarr:develop
+    image: lscr.io/linuxserver/prowlarr@sha256:f4730dce47b43faff003f17a2bbd71e13358e6c1fc8c5ca59d728db3a473af33
     environment:
       - PUID=1026
       - PGID=100
@@ -210,6 +224,7 @@ services:
       - NETWORK_ACCESS=internal
       - VIRTUAL_HOST=prowlarr.erdos.local,prowlarr.erdos.remote
       - VIRTUAL_PORT=9696
+      - TZ=America/New_York
     expose: 
       - 9696
     volumes:
@@ -222,13 +237,14 @@ services:
   # bazarr
   # find subtitles
   bazarr:
-    image: lscr.io/linuxserver/bazarr:latest
+    #image: lscr.io/linuxserver/bazarr:latest
+    image: lscr.io/linuxserver/bazarr@sha256:eb2cb0e5ad85db25bd3d806048f26aba58fbf7152a70f602102316e6d4269759
     environment:
       - NETWORK_ACCESS=internal
       - PUID=1026
       - PGID=100
       - TZ=America/New_York
-      - VIRTUAL_HOST=bazarr.erdos.local,subtitles.erdos.local,bazarr.erdos.remote
+      - VIRTUAL_HOST=subtitles.erdos.local,bazarr.erdos.local,subtitles.erdos.local,bazarr.erdos.remote
       - VIRTUAL_PORT=6767
     cap_drop:
       - all
@@ -249,7 +265,8 @@ services:
 
 
   overseerr:
-    image: lscr.io/linuxserver/overseerr
+    #image: lscr.io/linuxserver/overseerr
+    image: lscr.io/linuxserver/overseerr@sha256:a95135a96dc7fd2d661d8297a791715720657c20d84aa16e2e1d7e52bb293ecd
     cap_drop:
       - ALL
     cap_add:
@@ -274,7 +291,8 @@ services:
 
   # Bypasses Cloud Flare
   flaresolverr:
-    image: ghcr.io/flaresolverr/flaresolverr:v1.2.9 # prowlerr does not support v2
+    #image: ghcr.io/flaresolverr/flaresolverr:v1.2.9 # prowlerr does not support v2
+    image: ghcr.io/flaresolverr/flaresolverr@sha256:6f93f3359a8b2cbd268286ce460ff5ffa79a6f1d8c19097ed49097fbfab6a786
     user: "nobody:nobody"
     read_only: true
     cap_drop:
@@ -294,7 +312,8 @@ services:
 
 
   minio:
-    image: docker.io/bitnami/minio:2022
+    #image: docker.io/bitnami/minio:2022
+    image: bitnami/minio@sha256:46310966335957aab20c5386bbf827b1512991370d1065bccd166acbe744018e
     cap_drop:
       - ALL
     ports:
