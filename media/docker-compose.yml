@@ -57,6 +57,7 @@ services:
       - 80:80
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
+    restart: always
 
 
   whoami:
@@ -73,6 +74,7 @@ services:
       - NETWORK_ACCESS=internal
       - VIRTUAL_HOST=whoami.erdos.local,whoami.erdos.remote
       - VIRTUAL_PORT=8000
+    restart: always
 
 
   transmission:
@@ -90,7 +92,6 @@ services:
       - setuid
     tmpfs:
       - /tmp
-    restart: always
     volumes:
       - /volume1/data/docker/apps/transmission/data/completed:/data/completed
       - /volume1/data/docker/apps/transmission/data/incomplete:/data/incomplete
@@ -120,6 +121,7 @@ services:
       - 9091
     sysctls:
       - "net.ipv6.conf.all.disable_ipv6=0"
+    restart: always
 
   # media player
   # @TODO try to put this in bridge networking
@@ -146,6 +148,7 @@ services:
         #  - /var/run/s6:exec
         #  - /app
         #  - /defaults
+    restart: always
 
 
   # @TODO pin down basic hardening
@@ -180,6 +183,7 @@ services:
       - /tmp
     expose:
       - 7878
+    restart: always
 
 
   # Manages your TV library
@@ -211,7 +215,7 @@ services:
       - /volume1/data/docker/apps/sonarr/media-recycling-bin:/data/media-recycling-bin
     expose:
       - 8989
-    restart: unless-stopped
+    restart: always
 
 
   prowlarr:
@@ -231,7 +235,7 @@ services:
       - /volume1/data/docker/apps/prowlarr/config:/config
     tmpfs:
       - /tmp
-    restart: unless-stopped
+    restart: always
 
 
   # bazarr
@@ -244,7 +248,7 @@ services:
       - PUID=1026
       - PGID=100
       - TZ=America/New_York
-      - VIRTUAL_HOST=subtitles.erdos.local,bazarr.erdos.local,subtitles.erdos.local,bazarr.erdos.remote
+      - VIRTUAL_HOST=subs.erdos.local,subtitles.erdos.local,bazarr.erdos.local,subtitles.erdos.local,bazarr.erdos.remote
       - VIRTUAL_PORT=6767
     cap_drop:
       - all
@@ -280,13 +284,14 @@ services:
       - PGID=1000
       - TZ=America/New_York
       - VIRTUAL_HOST=overseerr.erdos.local,requests.erdos.local,overseerr.erdos.remote
+      - VIRTUAL_PORT=5055
     volumes:
       - /volume1/data/docker/apps/overseerr/config:/config
     tmpfs:
       - /tmp
     expose:
       - 5055
-    restart: unless-stopped
+    restart: always
 
 
   # Bypasses Cloud Flare
@@ -305,9 +310,10 @@ services:
         #- ANTI_CAPTCHA_APIKEY=123456789
       - TZ=America/New_York
       - VIRTUAL_HOST=flaresolverr.erdos.local,flare.erdos.local,flare.erdos.remote
+      - VIRTUAL_PORT=8191
     expose:
       - 8191
-    restart: unless-stopped 
+    restart: always
 
 
 
@@ -332,6 +338,7 @@ services:
       - /volume1/data/docker/apps/minio/config:/root/.minio
     tmpfs:
       - /tmp
+    restart: always
 
 volumes:
   copy_openvpn_config:
