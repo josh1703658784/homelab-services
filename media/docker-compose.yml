@@ -54,6 +54,7 @@ services:
       - NETWORK_ACCESS=internal
       - DEFAULT_HOST=whoami.erdos.local
     ports:
+      # https://tonylawrence.com/posts/unix/synology/freeing-port-80/
       - 80:80
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
@@ -79,7 +80,7 @@ services:
 
   transmission:
     #image: haugene/transmission-openvpn
-    image: haugene/transmission-openvpn@sha256:8fbca248dbb0ec68fda347c82a95776f6f967df3fc610f25791532df842ab04a
+    image: haugene/transmission-openvpn:latest
       #user: 1026:100 #"${UID}:${GID}"
     cap_drop:
       - ALL
@@ -126,8 +127,7 @@ services:
   # media player
   # @TODO try to put this in bridge networking
   plex:
-    #image: lscr.io/linuxserver/plex:latest
-    image: lscr.io/linuxserver/plex@sha256:16818770f37cc8edf1616b03a8660d3384b62f5a93bc09fa70775baea0b80f6b
+    image: lscr.io/linuxserver/plex:latest
     network_mode: host
     environment:
       #- NETWORK_ACCESS=internal
@@ -154,8 +154,7 @@ services:
   # @TODO pin down basic hardening
   # movie
   radarr:
-    #image: lscr.io/linuxserver/radarr:latest
-    image: lscr.io/linuxserver/radarr@sha256:606546d01349a851d2ba9f05047d03dad888551ad67dca1e3ed1177c81d8405e
+    image: lscr.io/linuxserver/radarr:latest
       #user: '1026'
     tmpfs:
       - /var/run/s6:exec,rw
@@ -189,8 +188,7 @@ services:
   # Manages your TV library
   # sonarr
   sonarr:
-    #image: lscr.io/linuxserver/sonarr:latest
-    image: lscr.io/linuxserver/sonarr@sha256:49052e1ac8266cd421d5e86b2be5bed7571b41e7ff6864149011d9259421427f
+    image: lscr.io/linuxserver/sonarr:latest
     cap_drop:
       - all
     cap_add:
@@ -220,7 +218,7 @@ services:
 
   prowlarr:
     #image: lscr.io/linuxserver/prowlarr:develop
-    image: lscr.io/linuxserver/prowlarr@sha256:f4730dce47b43faff003f17a2bbd71e13358e6c1fc8c5ca59d728db3a473af33
+    image: lscr.io/linuxserver/prowlarr:develop
     environment:
       - PUID=1026
       - PGID=100
@@ -241,8 +239,7 @@ services:
   # bazarr
   # find subtitles
   bazarr:
-    #image: lscr.io/linuxserver/bazarr:latest
-    image: lscr.io/linuxserver/bazarr@sha256:eb2cb0e5ad85db25bd3d806048f26aba58fbf7152a70f602102316e6d4269759
+    image: lscr.io/linuxserver/bazarr:latest
     environment:
       - NETWORK_ACCESS=internal
       - PUID=1026
@@ -270,7 +267,7 @@ services:
 
   overseerr:
     #image: lscr.io/linuxserver/overseerr
-    image: lscr.io/linuxserver/overseerr@sha256:a95135a96dc7fd2d661d8297a791715720657c20d84aa16e2e1d7e52bb293ecd
+    image: lscr.io/linuxserver/overseerr:latest
     cap_drop:
       - ALL
     cap_add:
@@ -285,6 +282,8 @@ services:
       - TZ=America/New_York
       - VIRTUAL_HOST=overseerr.erdos.local,requests.erdos.local,overseerr.erdos.remote
       - VIRTUAL_PORT=5055
+    networks:
+      - traefik_hub
     volumes:
       - /volume1/data/docker/apps/overseerr/config:/config
     tmpfs:
@@ -296,8 +295,7 @@ services:
 
   # Bypasses Cloud Flare
   flaresolverr:
-    #image: ghcr.io/flaresolverr/flaresolverr:v1.2.9 # prowlerr does not support v2
-    image: ghcr.io/flaresolverr/flaresolverr@sha256:6f93f3359a8b2cbd268286ce460ff5ffa79a6f1d8c19097ed49097fbfab6a786
+    image: ghcr.io/flaresolverr/flaresolverr:v1.2.9 # prowlerr does not support v2
     user: "nobody:nobody"
     read_only: true
     cap_drop:
@@ -317,28 +315,93 @@ services:
 
 
 
-  minio:
-    #image: docker.io/bitnami/minio:2022
-    image: bitnami/minio@sha256:46310966335957aab20c5386bbf827b1512991370d1065bccd166acbe744018e
-    cap_drop:
-      - ALL
-    ports:
-      - '9000:9000' # api port
-    expose:
-      - 9001 # console port
+      #  @TODO: fix; broken atm and unused
+      #  minio:
+      #    #image: docker.io/bitnami/minio:2022
+      #    image: bitnami/minio@sha256:46310966335957aab20c5386bbf827b1512991370d1065bccd166acbe744018e
+      #    cap_drop:
+      #      - ALL
+      #    ports:
+      #      - '9000:9000' # api port
+      #    expose:
+      #      - 9001 # console port
+      #    environment:
+      #      - NETWORK_ACCESS=internal
+      #      - VIRTUAL_HOST=minio.erdos.local,s3.erdos.local,arq.erdos.local
+      #        #- PUID=1026
+      #        #- PGID=100
+      #      - VIRTUAL_PORT=9001
+      #      - MINIO_ROOT_USER=root
+      #      - MINIO_ROOT_PASSWORD=root
+      #    volumes:
+      #      # NOTE: As this is a non-root container, the mounted files and directories must have the proper permissions for the UID 1001.
+      #      - /volume1/data/docker/apps/minio/data:/data
+      #      - /volume1/data/docker/apps/minio/config:/root/.minio
+      #    tmpfs:
+      #      - /tmp
+      #    restart: always
+      #      #entrypoint: tail
+      #      #command: -f /dev/null
+
+
+  readarr:
+    # version is at < 1.0 so let's kleep up with the latest updates
+    image: lscr.io/linuxserver/readarr:nightly
     environment:
+      - PUID=1026
+      - PGID=100
+      - TZ=America/New_York
       - NETWORK_ACCESS=internal
-      - VIRTUAL_HOST=minio.erdos.local,s3.erdos.local,arq.erdos.local
-      - VIRTUAL_PORT=9001
-      - MINIO_ROOT_USER=
-      - MINIO_ROOT_PASSWORD=
-    volumes:
-      # NOTE: As this is a non-root container, the mounted files and directories must have the proper permissions for the UID 1001.
-      - /volume1/data/docker/apps/minio/data:/data
-      - /volume1/data/docker/apps/minio/config:/root/.minio
-    tmpfs:
-      - /tmp
-    restart: always
+      - VIRTUAL_HOST=readarr.erdos.local,read.erdos.local,books.erdos.local
+      - VIRTUAL_PORT=8787
+        #volumes:
+        #  - /volume1/data/docker/apps/readarr/config:/config
+        #  - /volume1/data/docker/apps/readarr/books:/books:ro
+        #  - /volume1/data/docker/apps/transmission/data/completed:/downloads:ro
+    restart: unless-stopped
+
+
+      #  # Start the agent with the latest version
+      #  hub-agent:
+      #    image: ghcr.io/traefik/hub-agent-traefik:experimental
+      #    pull_policy: always
+      #    container_name: hub-agent
+      #    restart: "on-failure"
+      #    networks:
+      #      - traefik_hub
+      #    command:
+      #      - run
+      #      - --hub.token=5f54330b-ebd3-4f52-b35f-5c0c6e0ca480
+      #      - --auth-server.advertise-url=http://hub-agent
+      #      - --traefik.host=traefik
+      #      - --traefik.tls.insecure=true
+      #    volumes:
+      #      - /var/run/docker.sock:/var/run/docker.sock
+      #    depends_on:
+      #      - traefik
+  
+      #  # Start Traefik with the latest version
+      #  traefik:
+      #    image: traefik:v2.8
+      #    container_name: traefik
+      #    networks:
+      #      - traefik_hub
+      #    command:
+      #      # Enable Hub communication (open the port 9900 and 9901 by default)
+      #      - --experimental.hub=true
+      #      - --hub.tls.insecure=true
+      #      - --metrics.prometheus.addrouterslabels=true
+
+      #cloudflared:
+      #  image: cloudflare/cloudflared:latest
+      #  container_name: tunnel
+      #  command:
+      #    - \--no-autoupdate run
+      #    - \--token eyJhIjoiODIxMDE5MDAzZTVlMmYzMmZkY2ZjOGE4ZDc5ZTIwYWMiLCJ0IjoiNWEzMTgyMTQtYzEzYi00MmM4LThmZWItNjRjMTBiZTFhM2MyIiwicyI6IlpHTTBNelEyTW1VdE1XWXlZaTAwWkdFNUxUZzBNMkV0TUdObU0yRmlOREk0Tm1OayJ9
 
 volumes:
   copy_openvpn_config:
+
+
+networks:
+  traefik_hub:
