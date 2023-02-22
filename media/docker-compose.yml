@@ -51,7 +51,6 @@ services:
       - setgid            # @TODO fix this in forked dockerfile
       - setuid            # @TODO fix this in forked dockerfile
     environment:
-      - NETWORK_ACCESS=internal
       - DEFAULT_HOST=whoami.erdos.local
     ports:
       # https://tonylawrence.com/posts/unix/synology/freeing-port-80/
@@ -72,7 +71,6 @@ services:
       - 8000
     user: nobody
     environment:
-      - NETWORK_ACCESS=internal
       - VIRTUAL_HOST=whoami.erdos.local,whoami.erdos.remote
       - VIRTUAL_PORT=8000
     restart: always

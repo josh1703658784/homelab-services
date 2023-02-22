@@ -25,23 +25,19 @@ version: "2.4"
 
 services:
 
-
   # media player
   # @TODO try to put this in bridge networking
   plex:
     image: lscr.io/linuxserver/plex:latest
-    network_mode: host
-      #ports:
-      #  - "32400:32400"
-      #  #- "127.0.0.1:32400:32400"
+    networks:
+      plex:
+        ipv4_address: 10.0.0.4
+   # ports:
+   #   - "32400:32400"
     environment:
-      #- NETWORK_ACCESS=internal
       - PUID=1026
       - PGID=100
       - VERSION=docker
-        #- ADVERTISE_IP=http://192.168.12.184:32400/
-        #- ADVERTISE_IP=http://plex.pc.local:32400/
-        #- ALLOWED_NETWORKS=192.168.12.0/8  #192.168.1.0/24
       - TZ=America/New_York
         #deploy:
         #  resources:
@@ -55,20 +51,21 @@ services:
       - /mnt/nas_media/docker/apps/sonarr/media-organized:/TV:ro
       - /mnt/nas_media/docker/apps/radarr/media-organized:/MOVIES:ro
       - /dev/shm:/transcode  # default ramdisk that uses a maximum 50% of RAM
-      #- /volume1/data/docker/apps/plex/config:/config
-        #- /volume1/data/docker/apps/sonarr/media-organized:/tv-organized:ro
-        #- /volume1/data/docker/apps/radarr/media-organized:/movies-organized:ro
     tmpfs:
       - /tmp
-        #tmpfs:
-        #  - /var/run/s6:exec
-        #  - /app
-        #  - /defaults
     restart: always
 
 volumes:
   plex_config_volume:
 
-
-      #networks:
-      #  traefik_hub:
+networks:
+  plex:
+    name: plex
+    driver: macvlan
+    driver_opts:
+      parent: eno1
+    ipam:
+      driver: default
+      config:
+        - subnet: "10.0.0.0/29"
+          gateway: "10.0.0.1"
