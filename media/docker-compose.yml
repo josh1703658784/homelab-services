@@ -105,7 +105,7 @@ services:
       - /volume1/data/docker/apps/vpn/config/mullvad_ch_zrh.ovpn:/readonly_vpn_config.ovpn:ro
     environment:
       - NETWORK_ACCESS=internal
-      - VIRTUAL_HOST=transmission.erdos.local,trans.erdos.local,download.erdos.local,downloads.erdos.local,tv.erdos.remote
+      - VIRTUAL_HOST=transmission.nas.local,trans.nas.local,transmission.erdos.local,trans.erdos.local
       - VIRTUAL_PORT=9091
       - OPENVPN_PROVIDER=custom
       - OPENVPN_CONFIG=vpn_config
@@ -196,10 +196,10 @@ services:
       - setuid
       - chown
     tmpfs:
-      - /var/run/s6:exec,rw
+      #- /var/run/s6:exec,rw
       - /tmp
     environment:
-      - S6_READ_ONLY_ROOT=1
+      #- S6_READ_ONLY_ROOT=1
       - NETWORK_ACCESS=internal
       - PUID=1026
       - PGID=100
