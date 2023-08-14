@@ -4,3 +4,4 @@ keyfile_password
 *.no_commit
 .env
 .envrc
+.DS_Store
