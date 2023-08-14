@@ -15,6 +15,7 @@
 # @TODO run containers as non-root
 # @TODO https://github.com/HaveAGitGat/Tdarr
 # @TODO https://github.com/TheUltimateC0der/Listrr
+# @TODO tailscale container instead of (or in addition to?) on metal?
 # @TODO off-load plex trasncoding https://github.com/UnicornTranscoder/UnicornTranscoder
 
 # p2p related apps: https://teddit.net/r/radarr/comments/hbwnb2/a_list_of_all_companion_tools_and_software/
@@ -31,7 +32,8 @@ services:
     # @TODO split into two containers: https://github.com/nginx-proxy/nginx-proxy#separate-containers
     #image: jwilder/nginx-proxy:alpine # alpine latest image
     image: jwilder/nginx-proxy@sha256:fb3b9b1dfbacdfd4ae9ba3f4a0e0994cedef81738c05975909a22ebe073ade6e # alpine
-    read_only: true
+    #image: nginxproxy/nginx-proxy
+      #read_only: true
     tmpfs:
       - /etc/nginx/dhparam/
       - /var/cache/nginx/client_temp/
@@ -51,12 +53,14 @@ services:
       - setgid            # @TODO fix this in forked dockerfile
       - setuid            # @TODO fix this in forked dockerfile
     environment:
-      - DEFAULT_HOST=whoami.erdos.local
+      - DEFAULT_HOST=whoami.nas.local
     ports:
       # https://tonylawrence.com/posts/unix/synology/freeing-port-80/
-      - 80:80
+      #- 80:80
+      - 9999:80
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
+      - /volume1/data/docker/apps/nginx-proxy/certs:/etc/nginx/certs:ro
     restart: always
 
 
@@ -71,7 +75,7 @@ services:
       - 8000
     user: nobody
     environment:
-      - VIRTUAL_HOST=whoami.erdos.local,whoami.erdos.remote
+      - VIRTUAL_HOST=whoami.nas.local
       - VIRTUAL_PORT=8000
     restart: always
 
@@ -103,7 +107,7 @@ services:
       - /volume1/data/docker/apps/vpn/config/mullvad_ch_zrh.ovpn:/readonly_vpn_config.ovpn:ro
     environment:
       - NETWORK_ACCESS=internal
-      - VIRTUAL_HOST=transmission.nas.local,trans.nas.local,transmission.erdos.local,trans.erdos.local
+      - VIRTUAL_HOST=transmission.nas.local,trans.nas.local,trans.nas.stonecat-shark.ts.net
       - VIRTUAL_PORT=9091
       - OPENVPN_PROVIDER=custom
       - OPENVPN_CONFIG=vpn_config
@@ -133,11 +137,13 @@ services:
       - PGID=100
       - VERSION=docker
         #- ADVERTISE_IP=http://192.168.12.184:32400/
-      - ADVERTISE_IP=http://plex.erdos.local:32400/
+      - ADVERTISE_IP=http://plex.nas.local:32400/
       - ALLOWED_NETWORKS=192.168.12.0/8  #192.168.1.0/24
-      - TZ=America/New_York
+      - TZ=America/Vancouver
     volumes:
       - /volume1/data/docker/apps/plex/config:/config
+      - /volume1/data/docker/apps/plex/movies-handbrake-encodes:/movies-handbrake-encodes:ro
+      - /volume1/data/docker/apps/plex/tv-handbrake-encodes:/tv-handbrake-encodes:ro
       - /volume1/data/docker/apps/sonarr/media-organized:/tv-organized:ro
       - /volume1/data/docker/apps/radarr/media-organized:/movies-organized:ro
     tmpfs:
@@ -155,7 +161,8 @@ services:
     image: lscr.io/linuxserver/radarr:latest
       #user: '1026'
     tmpfs:
-      - /var/run/s6:exec,rw
+      #- /var/run/s6:exec,rw
+      - /tmp
     cap_drop:
       - all
     cap_add:
@@ -168,16 +175,14 @@ services:
         #- NETWORK_ACCESS=internal
       - PUID=1026
       - PGID=100
-      - TZ=America/New_York
-      - VIRTUAL_HOST=radarr.erdos.local,movies.erdos.local,radarr.erdos.remote,movies.erdos.remote
+      - TZ=America/Vancouver
+      - VIRTUAL_HOST=radarr.nas.local,movies.nas.local,radarr.erdos.remote,movies.erdos.remote
       - VIRTUAL_PORT=7878
     volumes:
       - /volume1/data/docker/apps/radarr/config:/config
       - /volume1/data/docker/apps/radarr/media-organized:/data/media-organized
       - /volume1/data/docker/apps/radarr/media-recycling-bin:/data/media-recycling-bin
       - /volume1/data/docker/apps/transmission/data/completed/:/data/completed/
-    tmpfs:
-      - /tmp
     expose:
       - 7878
     restart: always
@@ -201,8 +206,8 @@ services:
       - NETWORK_ACCESS=internal
       - PUID=1026
       - PGID=100
-      - TZ=America/New_York
-      - VIRTUAL_HOST=sonarr.erdos.local,tv.erdos.local,sonarr.erdos.remote,tv.erdos.remote
+      - TZ=America/Vancouver
+      - VIRTUAL_HOST=sonarr.nas.local,tv.nas.local,sonarr.erdos.remote,tv.erdos.remote
       - VIRTUAL_PORT=8989
     volumes:
       - /volume1/data/docker/apps/sonarr/config:/config
@@ -213,6 +218,34 @@ services:
       - 8989
     restart: always
 
+  tdarr:
+    container_name: tdarr
+    image: ghcr.io/haveagitgat/tdarr:latest
+    restart: always
+    network_mode: bridge
+    ports:
+      - 8265:8265 # webUI port
+      - 8266:8266 # server port
+    environment:
+      - TZ=America/Vancouver
+        #- PUID=${PUID}
+        #- PGID=${PGID}
+      - UMASK_SET=002
+      - serverIP=0.0.0.0
+      - serverPort=8266
+      - webUIPort=8265
+      - internalNode=false
+      - inContainer=true
+      - nodeName=NotANode
+      - NETWORK_ACCESS=internal
+      - VIRTUAL_HOST=tdarr.nas.local,transcode.nas.local
+      - VIRTUAL_PORT=8265
+    volumes:
+      - /volume1/data/docker/apps/tdarr/root/app/server:/app/server
+      - /volume1/data/docker/apps/tdarr/root/app/configs:/app/configs
+      - /volume1/data/docker/apps/tdarr/root/app/logs:/app/logs
+        #- /media:/media
+        #- /transcode_cache:/temp
 
   prowlarr:
     #image: lscr.io/linuxserver/prowlarr:develop
@@ -222,9 +255,9 @@ services:
       - PGID=100
       - S6_READ_ONLY_ROOT=1
       - NETWORK_ACCESS=internal
-      - VIRTUAL_HOST=prowlarr.erdos.local,prowlarr.erdos.remote
+      - VIRTUAL_HOST=prowlarr.nas.local,prowlarr.erdos.remote
       - VIRTUAL_PORT=9696
-      - TZ=America/New_York
+      - TZ=America/Vancouver
     expose: 
       - 9696
     volumes:
@@ -242,8 +275,8 @@ services:
       - NETWORK_ACCESS=internal
       - PUID=1026
       - PGID=100
-      - TZ=America/New_York
-      - VIRTUAL_HOST=subs.erdos.local,subtitles.erdos.local,bazarr.erdos.local,subtitles.erdos.local,bazarr.erdos.remote
+      - TZ=America/Vancouver
+      - VIRTUAL_HOST=subs.nas.local,subtitles.nas.local,bazarr.nas.local,subtitles.nas.local,bazarr.erdos.remote
       - VIRTUAL_PORT=6767
     cap_drop:
       - all
@@ -264,7 +297,6 @@ services:
 
 
   overseerr:
-    #image: lscr.io/linuxserver/overseerr
     image: lscr.io/linuxserver/overseerr:latest
     cap_drop:
       - ALL
@@ -277,8 +309,8 @@ services:
       - NETWORK_ACCESS=internal
       - PUID=1026
       - PGID=1000
-      - TZ=America/New_York
-      - VIRTUAL_HOST=overseerr.erdos.local,requests.erdos.local,overseerr.erdos.remote
+      - TZ=America/Vancouver
+      - VIRTUAL_HOST=overseerr.nas.local,requests.nas.local,overseerr.erdos.remote
       - VIRTUAL_PORT=5055
     networks:
       - traefik_hub
@@ -304,43 +336,12 @@ services:
       - NETWORK_ACCESS=internal
         #- CAPTCHA_SOLVER=anticaptcha
         #- ANTI_CAPTCHA_APIKEY=123456789
-      - TZ=America/New_York
-      - VIRTUAL_HOST=flaresolverr.erdos.local,flare.erdos.local,flare.erdos.remote
+      - TZ=America/Vancouver
+      - VIRTUAL_HOST=flaresolverr.nas.local,flare.nas.local,flare.erdos.remote
       - VIRTUAL_PORT=8191
     expose:
       - 8191
     restart: always
-
-
-
-      #  @TODO: fix; broken atm and unused
-      #  minio:
-      #    #image: docker.io/bitnami/minio:2022
-      #    image: bitnami/minio@sha256:46310966335957aab20c5386bbf827b1512991370d1065bccd166acbe744018e
-      #    cap_drop:
-      #      - ALL
-      #    ports:
-      #      - '9000:9000' # api port
-      #    expose:
-      #      - 9001 # console port
-      #    environment:
-      #      - NETWORK_ACCESS=internal
-      #      - VIRTUAL_HOST=minio.erdos.local,s3.erdos.local,arq.erdos.local
-      #        #- PUID=1026
-      #        #- PGID=100
-      #      - VIRTUAL_PORT=9001
-      #      - MINIO_ROOT_USER=root
-      #      - MINIO_ROOT_PASSWORD=root
-      #    volumes:
-      #      # NOTE: As this is a non-root container, the mounted files and directories must have the proper permissions for the UID 1001.
-      #      - /volume1/data/docker/apps/minio/data:/data
-      #      - /volume1/data/docker/apps/minio/config:/root/.minio
-      #    tmpfs:
-      #      - /tmp
-      #    restart: always
-      #      #entrypoint: tail
-      #      #command: -f /dev/null
-
 
   readarr:
     # version is at < 1.0 so let's kleep up with the latest updates
@@ -348,9 +349,9 @@ services:
     environment:
       - PUID=1026
       - PGID=100
-      - TZ=America/New_York
+      - TZ=America/Vancouver
       - NETWORK_ACCESS=internal
-      - VIRTUAL_HOST=readarr.erdos.local,read.erdos.local,books.erdos.local
+      - VIRTUAL_HOST=readarr.nas.local,read.nas.local,books.nas.local
       - VIRTUAL_PORT=8787
         #volumes:
         #  - /volume1/data/docker/apps/readarr/config:/config
@@ -359,36 +360,26 @@ services:
     restart: unless-stopped
 
 
-      #  # Start the agent with the latest version
-      #  hub-agent:
-      #    image: ghcr.io/traefik/hub-agent-traefik:experimental
-      #    pull_policy: always
-      #    container_name: hub-agent
-      #    restart: "on-failure"
-      #    networks:
-      #      - traefik_hub
-      #    command:
-      #      - run
-      #      - --hub.token=5f54330b-ebd3-4f52-b35f-5c0c6e0ca480
-      #      - --auth-server.advertise-url=http://hub-agent
-      #      - --traefik.host=traefik
-      #      - --traefik.tls.insecure=true
-      #    volumes:
-      #      - /var/run/docker.sock:/var/run/docker.sock
-      #    depends_on:
-      #      - traefik
-  
-      #  # Start Traefik with the latest version
-      #  traefik:
-      #    image: traefik:v2.8
-      #    container_name: traefik
-      #    networks:
-      #      - traefik_hub
-      #    command:
-      #      # Enable Hub communication (open the port 9900 and 9901 by default)
-      #      - --experimental.hub=true
-      #      - --hub.tls.insecure=true
-      #      - --metrics.prometheus.addrouterslabels=true
+  wiki:
+    image: lscr.io/linuxserver/wikijs:latest
+    cap_add:
+      - setgid
+      - setuid
+      - chown
+    volumes:
+      - /volume1/data/docker/apps/wikijs/config:/config
+      - /volume1/data/docker/apps/wikijs/data:/data
+    environment:
+      - NETWORK_ACCESS=internal
+      - VIRTUAL_HOST=wiki.nas.local
+      - VIRTUAL_PORT=3000
+      - PUID=1026
+      - PGID=100
+      - TZ=America/Vancouver
+    expose:
+      - 3000
+    restart: always
+
 
       #cloudflared:
       #  image: cloudflare/cloudflared:latest
