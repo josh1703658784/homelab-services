@@ -26,12 +26,45 @@ version: "2.4"
 
 services:
 
+  tailscale:
+    image: tailscale/tailscale
+    restart: always
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      - TS_AUTH_KEY=${TAILSCALE_ENV__TS_AUTH_KEY}
+      - TS_HOSTNAME=nas
+      - TS_SOCKET=/tmp/tailscaled.sock
+      - TS_STATE_DIR=/app_state
+      - TS_EXTRA_ARGS=--accept-dns --ssh
+    volumes:
+      - /var/lib:/var/lib:ro
+      - /dev/net/tun:/dev/net/tun:ro
+      - /volume1/data/docker/apps/tailscale/root/app_state:/app_state
+
+  exit-node:
+    image: tailscale/tailscale
+    restart: always
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      - TS_AUTH_KEY=${TAILSCALE_EXIT_NODE_ENV__TS_AUTH_KEY}
+      - TS_HOSTNAME=exit
+      - TS_SOCKET=/tmp/tailscaled.sock
+      - TS_STATE_DIR=/app_state
+      - TS_EXTRA_ARGS=--accept-dns --advertise-exit-node --exit-node-allow-lan-access=false # --shields-up
+    volumes:
+      - /var/lib:/var/lib:ro
+      - /dev/net/tun:/dev/net/tun:ro
+      - /volume1/data/docker/apps/tailscale_exit_node/root/app_data:/app_state
 
 
   proxy:
     # @TODO split into two containers: https://github.com/nginx-proxy/nginx-proxy#separate-containers
-    #image: jwilder/nginx-proxy:alpine # alpine latest image
-    image: jwilder/nginx-proxy@sha256:fb3b9b1dfbacdfd4ae9ba3f4a0e0994cedef81738c05975909a22ebe073ade6e # alpine
+    image: jwilder/nginx-proxy:alpine # alpine latest image
     #image: nginxproxy/nginx-proxy
       #read_only: true
     tmpfs:
@@ -219,10 +252,8 @@ services:
     restart: always
 
   tdarr:
-    container_name: tdarr
     image: ghcr.io/haveagitgat/tdarr:latest
     restart: always
-    network_mode: bridge
     ports:
       - 8265:8265 # webUI port
       - 8266:8266 # server port
@@ -312,8 +343,8 @@ services:
       - TZ=America/Vancouver
       - VIRTUAL_HOST=overseerr.nas.local,requests.nas.local,overseerr.erdos.remote
       - VIRTUAL_PORT=5055
-    networks:
-      - traefik_hub
+        #networks:
+        #  - traefik_hub
     volumes:
       - /volume1/data/docker/apps/overseerr/config:/config
     tmpfs:
@@ -392,5 +423,5 @@ volumes:
   copy_openvpn_config:
 
 
-networks:
-  traefik_hub:
+    #networks:
+    #  traefik_hub:

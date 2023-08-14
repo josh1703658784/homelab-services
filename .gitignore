@@ -3,3 +3,4 @@ keyfile_password
 *.swp
 *.no_commit
 .env
+.envrc
