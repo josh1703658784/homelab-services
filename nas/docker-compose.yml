@@ -26,97 +26,147 @@ version: "2.4"
 
 services:
 
-  tailscale:
-    image: tailscale/tailscale
-    restart: always
-    network_mode: host
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    environment:
-      - TS_AUTH_KEY=${TAILSCALE_ENV__TS_AUTH_KEY}
-      - TS_HOSTNAME=nas
-      - TS_SOCKET=/tmp/tailscaled.sock
-      - TS_STATE_DIR=/app_state
-      - TS_EXTRA_ARGS=--accept-dns --ssh
-    volumes:
-      - /var/lib:/var/lib:ro
-      - /dev/net/tun:/dev/net/tun:ro
-      - /volume1/data/docker/apps/tailscale/root/app_state:/app_state
-
-  exit-node:
-    image: tailscale/tailscale
-    restart: always
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    environment:
-      - TS_AUTH_KEY=${TAILSCALE_EXIT_NODE_ENV__TS_AUTH_KEY}
-      - TS_HOSTNAME=exit
-      - TS_SOCKET=/tmp/tailscaled.sock
-      - TS_STATE_DIR=/app_state
-      - TS_EXTRA_ARGS=--accept-dns --advertise-exit-node --exit-node-allow-lan-access=false # --shields-up
-    volumes:
-      - /var/lib:/var/lib:ro
-      - /dev/net/tun:/dev/net/tun:ro
-      - /volume1/data/docker/apps/tailscale_exit_node/root/app_data:/app_state
-
-
-  proxy:
-    # @TODO split into two containers: https://github.com/nginx-proxy/nginx-proxy#separate-containers
-    image: jwilder/nginx-proxy:alpine # alpine latest image
-    #image: nginxproxy/nginx-proxy
-      #read_only: true
-    tmpfs:
-      - /etc/nginx/dhparam/
-      - /var/cache/nginx/client_temp/
-      - /var/cache/nginx/proxy_temp/
-      - /var/cache/nginx/fastcgi_temp/
-      - /var/cache/nginx/uwsgi_temp/
-      - /var/cache/nginx/scgi_temp/
-      - /var/run/
-      - /etc/nginx/conf.d/
-      - /etc/nginx/certs/
-      - /tmp
-    cap_drop:
-      - all
-    cap_add:
-      - net_bind_service  # for access to port 80 (<1024)
-      - chown             # @TODO fix this in forked dockerfile
-      - setgid            # @TODO fix this in forked dockerfile
-      - setuid            # @TODO fix this in forked dockerfile
-    environment:
-      - DEFAULT_HOST=whoami.nas.local
-    ports:
-      # https://tonylawrence.com/posts/unix/synology/freeing-port-80/
-      #- 80:80
-      - 9999:80
-    volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-      - /volume1/data/docker/apps/nginx-proxy/certs:/etc/nginx/certs:ro
-    restart: always
+  #proxy:
+  #  # @TODO split into two containers: https://github.com/nginx-proxy/nginx-proxy#separate-containers
+  #  image: jwilder/nginx-proxy:alpine # alpine latest image
+  #  #image: nginxproxy/nginx-proxy
+  #    #read_only: true
+  #  tmpfs:
+  #    - /etc/nginx/dhparam/
+  #    - /var/cache/nginx/client_temp/
+  #    - /var/cache/nginx/proxy_temp/
+  #    - /var/cache/nginx/fastcgi_temp/
+  #    - /var/cache/nginx/uwsgi_temp/
+  #    - /var/cache/nginx/scgi_temp/
+  #    - /var/run/
+  #    - /etc/nginx/conf.d/
+  #    - /etc/nginx/certs/
+  #    - /tmp
+  #  cap_drop:
+  #    - all
+  #  cap_add:
+  #    - net_bind_service  # for access to port 80 (<1024)
+  #    - chown             # @TODO fix this in forked dockerfile
+  #    - setgid            # @TODO fix this in forked dockerfile
+  #    - setuid            # @TODO fix this in forked dockerfile
+  #  environment:
+  #    - DEFAULT_HOST=whoami.nas.stonecat-shark.ts.net
+  #  ports:
+  #    # https://tonylawrence.com/posts/unix/synology/freeing-port-80/
+  #    - 9980:80
+  #    - 9999:80
+  #  volumes:
+  #    - /var/run/docker.sock:/tmp/docker.sock:ro
+  #    - ${SERVICES}/nginx-proxy/certs:/etc/nginx/certs:ro
+  #  restart: always
 
 
-  whoami:
-    # alpine
-    #image: "jwilder/whoami:latest"
-    image: jwilder/whoami@sha256:c621c699e1becc851a27716df9773fa9a3f6bccb331e6702330057a688fd1d5a
-    read_only: true
-    cap_drop:
-      - all
-    expose:
-      - 8000
-    user: nobody
-    environment:
-      - VIRTUAL_HOST=whoami.nas.local
-      - VIRTUAL_PORT=8000
-    restart: always
+  #  caddy:
+  #    image: lucaslorentz/caddy-docker-proxy:2.8.5-alpine
+  #    ports:
+  #      - 80:80
+  #      - 443:443
+  #    environment:
+  #      - CADDY_INGRESS_NETWORKS=caddy
+  #    labels:
+  #      caddy: nas.stonecat-shark.ts.net
+  #    networks:
+  #      - caddy
+  #    volumes:
+  #      - /var/run/docker.sock:/var/run/docker.sock:ro
+  #      - caddy_data:/data
+  #        #- caddy_config:/config
+  #      #  restart: unless-stopped
+  #    restart: always
+
+      #  whoami:
+      #    image: containous/whoami
+      #    networks:
+      #      - caddy
+      #    expose:
+      #      - 80
+      #    labels:
+      #      caddy: whoami.nas.local
+      #      caddy.reverse_proxy: "{{upstreams 80}}"
+      #
+      #  whoami-ts:
+      #    image: containous/whoami
+      #    networks:
+      #      - caddy
+      #    expose:
+      #      - 80
+      #    labels:
+      #      caddy: whoami.nas-ts.local
+      #      caddy.reverse_proxy: "{{upstreams 80}}"
+
+  #  caddy:
+  #    image: caddy:2.7.3-alpine
+  #    restart: unless-stopped
+  #    networks:
+  #      - caddy
+  #    ports:
+  #      - "80:80"
+  #      - "443:443"
+  #      - "443:443/udp"
+  #    expose:
+  #      - 2019 # admin hub
+  #    tmpfs:
+  #      - /config
+  #      - /data #@ MOVE THIS BACK TO VOLUMES
+  #    volumes:
+  #      #- ${CADDY_DATA}/etc/caddy/Caddyfile:/etc/caddy/Caddyfile:root
+  #      - ${CADDY_DATA}/srv:/srv
+  #        #- ${CADDY_DATA}/data:/data
+  #        #- ${CADDY_DATA}/usr/share/caddy/index.html:/usr/share/caddy/index.html:ro
+  #
+  #  whoami:
+  #    image: containous/whoami
+  #    networks:
+  #      - caddy
+  #    expose:
+  #      - 80
+        #labels:
+        #  caddy: whoami.nas.stonecat-shark.ts.net
+        #  caddy.reverse_proxy: "{{upstreams 80}}"
 
 
+        #      #  caddy:
+        #      #    image: caddy
+        #      #    restart: always
+        #      #    command: 'caddy reverse-proxy --from http://trans.caddy.local:80 --to http://trasmission:9091'
+        #      #    ports:
+        #      #      - "9080:80"
+        #      #      - "9443:443"
+        #      #      - "9443:443/udp"
+        #      #    volumes:
+        #      #      - ${SERVICES}/caddy/root/etc/caddy/Caddyfile
+        #      #      - ${SERVICES}/caddy/root/site
+        #      #      - caddy_data:/data
+        #      #      - caddy_config:/config
+        #      #
+        #      #whoami:
+        #      #  # alpine
+        #      #  #image: "jwilder/whoami:latest"
+        #      #  image: jwilder/whoami
+        #      #  read_only: true
+        #      #  cap_drop:
+        #      #    - all
+        #      #  expose:
+        #      #    - 8000
+        #      #  user: nobody
+        #      #  environment:
+        #      #    - VIRTUAL_HOST=whoami.${LOCAL},whoami.nas.stonecat-shark.ts.net
+        #      #    - VIRTUAL_PORT=8000
+        #      #  restart: always
+        #
+        #
   transmission:
     #image: haugene/transmission-openvpn
     image: haugene/transmission-openvpn:latest
       #user: 1026:100 #"${UID}:${GID}"
+      #
+    networks:
+      - caddy
     cap_drop:
       - ALL
     cap_add:
@@ -128,19 +178,20 @@ services:
       - setuid
     tmpfs:
       - /tmp
+      - /config # data is copied to here
     volumes:
-      - /volume1/data/docker/apps/transmission/data/completed:/data/completed
-      - /volume1/data/docker/apps/transmission/data/incomplete:/data/incomplete
-      - /volume1/data/docker/apps/transmission/data/transmission-home:/data/transmission-home
+      - ${TRANSMISSION_DATA}/data/completed:/data/completed
+      - ${TRANSMISSION_DATA}/data/incomplete:/data/incomplete
+      - ${TRANSMISSION_DATA}/data/transmission-home:/data/transmission-home
       # > openvpn-pre-start.sh copies the on-disk readonly openvpn config to a directory where it is modified
       # > by this container/service. It is not desirable to have these changes written back to disk.
       # > I much prefer having the modifications done from a pristine config every time
-      - /volume1/data/docker/apps/vpn/config/openvpn-pre-start.sh:/scripts/openvpn-pre-start.sh:ro
-      - /volume1/data/docker/apps/vpn/config/mullvad_userpass.txt:/config/openvpn-credentials.txt:ro
-      - /volume1/data/docker/apps/vpn/config/mullvad_ch_zrh.ovpn:/readonly_vpn_config.ovpn:ro
+      - ${VPN_DATA}/config/openvpn-pre-start.sh:/scripts/openvpn-pre-start.sh:ro
+      - ${VPN_DATA}/config/mullvad_userpass.txt:/config/openvpn-credentials.txt:ro
+      - ${VPN_DATA}/config/mullvad_ch_zrh.ovpn:/readonly_vpn_config.ovpn:ro
     environment:
       - NETWORK_ACCESS=internal
-      - VIRTUAL_HOST=transmission.nas.local,trans.nas.local,trans.nas.stonecat-shark.ts.net
+      - VIRTUAL_HOST=transmission.${LOCAL},trans.${LOCAL},trans.nas.ts
       - VIRTUAL_PORT=9091
       - OPENVPN_PROVIDER=custom
       - OPENVPN_CONFIG=vpn_config
@@ -151,14 +202,17 @@ services:
       - TRANSMISSION_PREFETCH_ENABLED=true
       - DROP_DEFAULT_ROUTE=true # maybe works, maybe breaks
       - LOG_TO_STDOUT=true
-        #- PUID=1026
-        #- PGID=100
+        #- PUID="${PUID}"
+        #- PGID="${PGID}"
+        #labels:
+        #  caddy: transmission.caddy.local
+        #  caddy.reverse_proxy: "{{upstreams 9091}}"
     expose:
       - 9091
     sysctls:
       - "net.ipv6.conf.all.disable_ipv6=0"
     restart: always
-
+  
   # media player
   # @TODO try to put this in bridge networking
   plex:
@@ -166,19 +220,19 @@ services:
     network_mode: host
     environment:
       #- NETWORK_ACCESS=internal
-      - PUID=1026
-      - PGID=100
+      - PUID="${PUID}"
+      - PGID="${PGID}"
       - VERSION=docker
         #- ADVERTISE_IP=http://192.168.12.184:32400/
-      - ADVERTISE_IP=http://plex.nas.local:32400/
+      - ADVERTISE_IP=http://plex.${LOCAL}:32400/
       - ALLOWED_NETWORKS=192.168.12.0/8  #192.168.1.0/24
-      - TZ=America/Vancouver
+      - TZ="${TZ}"
     volumes:
-      - /volume1/data/docker/apps/plex/config:/config
-      - /volume1/data/docker/apps/plex/movies-handbrake-encodes:/movies-handbrake-encodes:ro
-      - /volume1/data/docker/apps/plex/tv-handbrake-encodes:/tv-handbrake-encodes:ro
-      - /volume1/data/docker/apps/sonarr/media-organized:/tv-organized:ro
-      - /volume1/data/docker/apps/radarr/media-organized:/movies-organized:ro
+      - ${PLEX_DATA}/config:/config
+      - ${PLEX_DATA}/movies-handbrake-encodes:/movies-handbrake-encodes:ro
+      - ${PLEX_DATA}/tv-handbrake-encodes:/tv-handbrake-encodes:ro
+      - ${SONARR_DATA}/media-organized:/tv-organized:ro
+      - ${RADARR_DATA}/media-organized:/movies-organized:ro
     tmpfs:
       - /tmp
         #tmpfs:
@@ -186,8 +240,8 @@ services:
         #  - /app
         #  - /defaults
     restart: always
-
-
+  
+  
   # @TODO pin down basic hardening
   # movie
   radarr:
@@ -206,21 +260,21 @@ services:
       - S6_READ_ONLY_ROOT=1
       - S6_BEHAVIOUR_IF_STAGE2_FAILS=2
         #- NETWORK_ACCESS=internal
-      - PUID=1026
-      - PGID=100
-      - TZ=America/Vancouver
-      - VIRTUAL_HOST=radarr.nas.local,movies.nas.local,radarr.erdos.remote,movies.erdos.remote
+      - PUID="${PUID}"
+      - PGID="${PGID}"
+      - TZ="${TZ}"
+      - VIRTUAL_HOST=radarr.${LOCAL},movies.${LOCAL}
       - VIRTUAL_PORT=7878
     volumes:
-      - /volume1/data/docker/apps/radarr/config:/config
-      - /volume1/data/docker/apps/radarr/media-organized:/data/media-organized
-      - /volume1/data/docker/apps/radarr/media-recycling-bin:/data/media-recycling-bin
-      - /volume1/data/docker/apps/transmission/data/completed/:/data/completed/
+      - ${RADARR_DATA}/config:/config
+      - ${RADARR_DATA}/media-organized:/data/media-organized
+      - ${RADARR_DATA}/media-recycling-bin:/data/media-recycling-bin
+      - ${TRANSMISSION_DATA}/data/completed/:/data/completed/
     expose:
       - 7878
     restart: always
-
-
+  
+  
   # Manages your TV library
   # sonarr
   sonarr:
@@ -237,20 +291,20 @@ services:
     environment:
       #- S6_READ_ONLY_ROOT=1
       - NETWORK_ACCESS=internal
-      - PUID=1026
-      - PGID=100
-      - TZ=America/Vancouver
-      - VIRTUAL_HOST=sonarr.nas.local,tv.nas.local,sonarr.erdos.remote,tv.erdos.remote
+      - PUID="${PUID}"
+      - PGID="${PGID}"
+      - TZ="${TZ}"
+      - VIRTUAL_HOST=sonarr.${LOCAL},tv.${LOCAL},sonarr.nas.ts
       - VIRTUAL_PORT=8989
     volumes:
-      - /volume1/data/docker/apps/sonarr/config:/config
-      - /volume1/data/docker/apps/sonarr/media-organized:/data/media-organized
-      - /volume1/data/docker/apps/transmission/data/completed:/data/completed
-      - /volume1/data/docker/apps/sonarr/media-recycling-bin:/data/media-recycling-bin
+      - ${SONARR_DATA}/config:/config
+      - ${SONARR_DATA}/media-organized:/data/media-organized
+      - ${SONARR_DATA}/media-recycling-bin:/data/media-recycling-bin
+      - ${TRANSMISSION_DATA}/data/completed:/data/completed
     expose:
       - 8989
     restart: always
-
+  
   tdarr:
     image: ghcr.io/haveagitgat/tdarr:latest
     restart: always
@@ -258,9 +312,9 @@ services:
       - 8265:8265 # webUI port
       - 8266:8266 # server port
     environment:
-      - TZ=America/Vancouver
+      - TZ="${TZ}"
         #- PUID=${PUID}
-        #- PGID=${PGID}
+        #- PGID="${PGID}"${PGID}
       - UMASK_SET=002
       - serverIP=0.0.0.0
       - serverPort=8266
@@ -269,45 +323,45 @@ services:
       - inContainer=true
       - nodeName=NotANode
       - NETWORK_ACCESS=internal
-      - VIRTUAL_HOST=tdarr.nas.local,transcode.nas.local
+      - VIRTUAL_HOST=tdarr.${LOCAL},transcode.${LOCAL}
       - VIRTUAL_PORT=8265
     volumes:
-      - /volume1/data/docker/apps/tdarr/root/app/server:/app/server
-      - /volume1/data/docker/apps/tdarr/root/app/configs:/app/configs
-      - /volume1/data/docker/apps/tdarr/root/app/logs:/app/logs
+      - ${TDARR_DATA}/app/server:/app/server
+      - ${TDARR_DATA}/app/configs:/app/configs
+      - ${TDARR_DATA}/app/logs:/app/logs
         #- /media:/media
         #- /transcode_cache:/temp
-
+  
   prowlarr:
     #image: lscr.io/linuxserver/prowlarr:develop
     image: lscr.io/linuxserver/prowlarr:develop
     environment:
-      - PUID=1026
-      - PGID=100
+      - PUID="${PUID}"
+      - PGID="${PGID}"
       - S6_READ_ONLY_ROOT=1
       - NETWORK_ACCESS=internal
-      - VIRTUAL_HOST=prowlarr.nas.local,prowlarr.erdos.remote
+      - VIRTUAL_HOST=prowlarr.${LOCAL}
       - VIRTUAL_PORT=9696
-      - TZ=America/Vancouver
+      - TZ="${TZ}"
     expose: 
       - 9696
     volumes:
-      - /volume1/data/docker/apps/prowlarr/config:/config
+      - ${PROWLARR_DATA}/config:/config
     tmpfs:
       - /tmp
     restart: always
-
-
+  
+  
   # bazarr
   # find subtitles
   bazarr:
     image: lscr.io/linuxserver/bazarr:latest
     environment:
       - NETWORK_ACCESS=internal
-      - PUID=1026
-      - PGID=100
-      - TZ=America/Vancouver
-      - VIRTUAL_HOST=subs.nas.local,subtitles.nas.local,bazarr.nas.local,subtitles.nas.local,bazarr.erdos.remote
+      - PUID="${PUID}"
+      - PGID="${PGID}"
+      - TZ="${TZ}"
+      - VIRTUAL_HOST=subs.${LOCAL},subtitles.${LOCAL},bazarr.${LOCAL},subtitles.${LOCAL}
       - VIRTUAL_PORT=6767
     cap_drop:
       - all
@@ -316,17 +370,17 @@ services:
       - setuid
       - chown
     volumes:
-      - /volume1/data/docker/apps/bazarr/config:/config
-      - /volume1/data/docker/apps/bazarr/downloaded_subtitles:/subtitles
-      - /volume1/data/docker/apps/sonarr/media-organized:/tv
-      - /volume1/data/docker/apps/radarr/media-organized:/movies
+      - ${BAZARR_DATA}/config:/config
+      - ${BAZARR_DATA}/downloaded_subtitles:/subtitles
+      - ${SONARR_DATA}/media-organized:/tv
+      - ${RADARR_DATA}/media-organized:/movies
     tmpfs:
       - /tmp
     expose:
       - 6767
     restart: always
-
-
+  
+  
   overseerr:
     image: lscr.io/linuxserver/overseerr:latest
     cap_drop:
@@ -338,22 +392,22 @@ services:
     environment:
       - S6_READ_ONLY_ROOT=1
       - NETWORK_ACCESS=internal
-      - PUID=1026
-      - PGID=1000
-      - TZ=America/Vancouver
-      - VIRTUAL_HOST=overseerr.nas.local,requests.nas.local,overseerr.erdos.remote
+      - PUID="${PUID}"
+      - PGID="${PGID}"
+      - TZ="${TZ}"
+      - VIRTUAL_HOST=overseerr.${LOCAL},requests.${LOCAL}
       - VIRTUAL_PORT=5055
         #networks:
         #  - traefik_hub
     volumes:
-      - /volume1/data/docker/apps/overseerr/config:/config
+      - ${OVERSEERR_DATA}/config:/config
     tmpfs:
       - /tmp
     expose:
       - 5055
     restart: always
-
-
+  
+  
   # Bypasses Cloud Flare
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:v1.2.9 # prowlerr does not support v2
@@ -367,30 +421,30 @@ services:
       - NETWORK_ACCESS=internal
         #- CAPTCHA_SOLVER=anticaptcha
         #- ANTI_CAPTCHA_APIKEY=123456789
-      - TZ=America/Vancouver
-      - VIRTUAL_HOST=flaresolverr.nas.local,flare.nas.local,flare.erdos.remote
+      - TZ="${TZ}"
+      - VIRTUAL_HOST=flaresolverr.${LOCAL},flare.${LOCAL}
       - VIRTUAL_PORT=8191
     expose:
       - 8191
     restart: always
-
+  
   readarr:
-    # version is at < 1.0 so let's kleep up with the latest updates
-    image: lscr.io/linuxserver/readarr:nightly
+    image: lscr.io/linuxserver/readarr:develop
+      #tmpfs:
     environment:
-      - PUID=1026
-      - PGID=100
-      - TZ=America/Vancouver
+      - PUID="${PUID}"
+      - PGID="${PGID}"
+      - TZ="${TZ}"
       - NETWORK_ACCESS=internal
-      - VIRTUAL_HOST=readarr.nas.local,read.nas.local,books.nas.local
+      - VIRTUAL_HOST=readarr.${LOCAL},read.${LOCAL},books.${LOCAL}
       - VIRTUAL_PORT=8787
-        #volumes:
-        #  - /volume1/data/docker/apps/readarr/config:/config
-        #  - /volume1/data/docker/apps/readarr/books:/books:ro
-        #  - /volume1/data/docker/apps/transmission/data/completed:/downloads:ro
+    volumes:
+      - ${READARR_DATA}/config:/config
+      - ${READARR_DATA}/books:/books:ro
+        #  - ${SERVICES}/transmission/data/completed:/downloads:ro
     restart: unless-stopped
-
-
+  
+  
   wiki:
     image: lscr.io/linuxserver/wikijs:latest
     cap_add:
@@ -398,30 +452,74 @@ services:
       - setuid
       - chown
     volumes:
-      - /volume1/data/docker/apps/wikijs/config:/config
-      - /volume1/data/docker/apps/wikijs/data:/data
+      - ${WIKI_JS_DATA}/config:/config
+      - ${WIKI_JS_DATA}/data:/data
     environment:
       - NETWORK_ACCESS=internal
-      - VIRTUAL_HOST=wiki.nas.local
+      - VIRTUAL_HOST=wiki.${LOCAL}
       - VIRTUAL_PORT=3000
-      - PUID=1026
-      - PGID=100
-      - TZ=America/Vancouver
+      - PUID="${PUID}"
+      - PGID="${PGID}"
+      - TZ="${TZ}"
     expose:
       - 3000
     restart: always
-
-
-      #cloudflared:
-      #  image: cloudflare/cloudflared:latest
-      #  container_name: tunnel
-      #  command:
-      #    - \--no-autoupdate run
-      #    - \--token eyJhIjoiODIxMDE5MDAzZTVlMmYzMmZkY2ZjOGE4ZDc5ZTIwYWMiLCJ0IjoiNWEzMTgyMTQtYzEzYi00MmM4LThmZWItNjRjMTBiZTFhM2MyIiwicyI6IlpHTTBNelEyTW1VdE1XWXlZaTAwWkdFNUxUZzBNMkV0TUdObU0yRmlOREk0Tm1OayJ9
+  
+  tailscale:
+    image: tailscale/tailscale
+    restart: always
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      - TS_AUTH_KEY=${TAILSCALE_ENV__TS_AUTH_KEY}
+      - TS_HOSTNAME=nas
+      - TS_SOCKET=/tmp/tailscaled.sock
+      - TS_STATE_DIR=/app_state
+      - TS_EXTRA_ARGS=--accept-dns 
+    volumes:
+      - /var/lib:/var/lib:ro
+      - /dev/net/tun:/dev/net/tun:ro
+      - ${TAILSCALE_DATA}/app_state:/app_state
+        #
+        #  exit-node:
+        #    image: tailscale/tailscale
+        #    restart: always
+        #    networks:
+        #      - exit-node
+        #    cap_add:
+        #      - NET_ADMIN
+        #      - NET_RAW
+        #    environment:
+        #      - TS_AUTH_KEY=${TAILSCALE_EXIT_NODE_ENV__TS_AUTH_KEY}
+        #      - TS_HOSTNAME=exit
+        #      - TS_SOCKET=/tmp/tailscaled.sock
+        #      - TS_STATE_DIR=/app_state
+        #      - TS_EXTRA_ARGS=--accept-dns --advertise-exit-node --exit-node-allow-lan-access=false # --shields-up
+        #    volumes:
+        #      - /var/lib:/var/lib:ro
+        #      - /dev/net/tun:/dev/net/tun:ro
+        #      - ${TAILSCALE_EXIT_NODE_DATA}/app_data:/app_state
+        #
+        #
+        #
+        #      #cloudflared:
+        #      #  image: cloudflare/cloudflared:latest
+        #      #  container_name: tunnel
+        #      #  command:
+        #      #    - \--no-autoupdate run
+        #      #    - \--token eyJhIjoiODIxMDE5MDAzZTVlMmYzMmZkY2ZjOGE4ZDc5ZTIwYWMiLCJ0IjoiNWEzMTgyMTQtYzEzYi00MmM4LThmZWItNjRjMTBiZTFhM2MyIiwicyI6IlpHTTBNelEyTW1VdE1XWXlZaTAwWkdFNUxUZzBNMkV0TUdObU0yRmlOREk0Tm1OayJ9
 
 volumes:
   copy_openvpn_config:
+  caddy_data:
+  caddy_config:
 
 
-    #networks:
-    #  traefik_hub:
+
+networks:
+  #exit-node:
+  caddy:
+    external: true
+      #name: nas_caddy
