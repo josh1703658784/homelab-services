@@ -1,0 +1,68 @@
+---
+
+version: "3.7"
+
+  #networks:
+  #  # network created via docker cmd line, 
+  #  # and all other containers are also on it
+  #  proxy-network:
+  #    name: proxy-network
+  #services:
+  #  caddy:
+  #    image: caddy:latest
+  #    restart: unless-stopped
+  #    container_name: caddy
+  #    hostname: caddy
+  #    networks:
+  #      # caddy is in the network with the other containers
+  #      #- proxy-network
+  #      - apps
+  #    depends_on:
+  #      # wait for tailscale to boot
+  #      # to communicate to it using the tailscaled.sock
+  #      - tailscale 
+  #    ports:
+  #      - "80:80"
+  #      - "443:443"
+  #      - "443:443/udp"
+  #    volumes:
+  #      - ${CADDY_DATA}/etc/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+  #      - caddy-data:/data
+  #      - caddy-config:/config
+  #        #- /home/io/docker_config/caddy/data:/data
+  #        #- /home/io/docker_config/caddy/config:/config
+  #       # tailscale creates its socket on /tmp, so we'll kidnap from there to expose to caddy
+  #       #- /home/io/docker_config/tailscale/tmp/tailscaled.sock:/var/run/tailscale/tailscaled.sock
+  #      - tailscale-socket:/var/run/tailscale
+  #      #- ${TAILSCALE_DATA}/var/run/tailscale/tailscaled.sock:/var/run/tailscale/tailscaled.sock:ro
+  #  #        #- /tmp:/var/run/tailscale/tailscaled.sock
+  #
+  #
+  #
+  #  tailscale:
+  #    image: tailscale/tailscale
+  #    network_mode: host
+  #    cap_add:
+  #      - NET_ADMIN
+  #      - NET_RAW
+  #    volumes:
+  #      #- /dev/net/tun:/dev/net/tun
+  #      - ${TAILSCALE_DATA}/var/lib:/var/lib
+  #        #- /home/io/docker_config/tailscale/varlib:/var/lib
+  #      # https://github.com/tailscale/tailscale/issues/6849
+  #      # add volume for the tailscaled.sock to be present on the host system
+  #      # that's where caddy goes to communicate with tailscale
+  #      #- /home/io/docker_config/tailscale/tmp:/tmp
+  #      - tailscale-socket:/var/run/tailscale
+  #        #- ${TAILSCALE_DATA}/var/run/tailscale:/var/run/tailscale
+  #    environment:
+  #      - TS_HOSTNAME=nas-docker
+  #        # despite what the documentation says, the socket is actually created in non-standard /tmp
+  #      - TS_SOCKET=/var/run/tailscale/tailscaled.sock
+  #      # https://github.com/tailscale/tailscale/issues/4913#issuecomment-1186402307
+  #      # we have to tell the container to put the state in the same folder
+  #      # that way the state is saved on the host and survives reboot of the container
+  #      - TS_STATE_DIR=/var/lib/tailscale
+  #      # this have to be used only on the first time
+  #      # after that, the state is saved in /var/lib/tailscale and the next line can be commented out 
+  #      - TS_AUTH_KEY=${TS_KEY}

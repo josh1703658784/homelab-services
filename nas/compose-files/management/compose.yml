@@ -1,0 +1,85 @@
+---
+
+version: "3.7"
+services:
+
+  portainer:
+    image: portainer/portainer-ce:alpine
+    networks:
+      - management
+      - socket_proxy
+    volumes:
+      - portainer-data:/data
+        #- /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - DOCKER_HOST=tcp://socket-proxy:2375
+    restart: always
+    expose:
+      - 9443
+    ports:
+      - 9443:9443
+    command: -H tcp://socket-proxy:2375
+
+
+  homepage:
+    image: ghcr.io/benphelps/homepage:latest
+    networks:
+      - management
+      - socket_proxy
+    environment:
+      - DOCKER_HOST=tcp://socket-proxy:2375
+    ports:
+      - 3000:3000
+    volumes:
+      - ${HOMEPAGE_DATA}/app/config:/app/config # Make sure your local config directory exists
+        #- /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
+    # user: 1000:1000 optional, not compatibile with direct socket see https://gethomepage.dev/en/configs/docker/#using-socket-directly
+    restart: unless-stopped
+
+  socket-proxy:
+    image: ghcr.io/tecnativa/docker-socket-proxy:nightly
+    restart: always
+    read_only: true
+    networks:
+      - socket_proxy
+    cap_drop:
+      - ALL
+    ports:
+     - "2375:2375"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    tmpfs:
+      - /run/
+      - /var/lib/haproxy
+    environment:
+      - LOG_LEVEL=debug 
+      ## Variables match the URL prefix (i.e. AUTH blocks access to /auth/* parts of the API, etc.).
+      # 0 to revoke access.
+      # 1 to grant access.
+      ## Granted by Default
+      - EVENTS=1
+      - PING=1
+      - VERSION=1
+      ## Revoked by Default
+      # Security critical
+      - AUTH=0
+      - SECRETS=0
+      - POST=1 # Watchtower
+      # Not always needed
+      - BUILD=0
+      - COMMIT=0
+      - CONFIGS=0
+      - CONTAINERS=1 # Traefik, portainer, etc.
+      - DISTRIBUTION=0
+      - EXEC=0
+      - IMAGES=1 # Portainer
+      - INFO=1 # Portainer
+      - NETWORKS=1 # Portainer
+      - NODES=0
+      - PLUGINS=0
+      - SERVICES=1 # Portainer
+      - SESSION=0
+      - SWARM=0
+      - SYSTEM=0
+      - TASKS=1 # Portainer
+      - VOLUMES=1 # Portainer

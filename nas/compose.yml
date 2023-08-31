@@ -1,0 +1,64 @@
+---
+
+version: "3.7"
+
+include:
+  - path: ./compose-files/private-tailscale-services/compose.yml
+    env_file: ./.env
+  - path: ./compose-files/apps/compose.yml
+    env_file: ./.env
+  - path: ./compose-files/management/compose.yml
+    env_file: ./.env
+
+
+# CAP_ADD/DROP information: http://rhelblog.redhat.com/2016/10/17/secure-your-containers-with-this-one-weird-trick/
+
+# @TODO review these https://teddit.net/r/radarr/comments/hbwnb2/a_list_of_all_companion_tools_and_software/
+# @TODO try https://dockersl.im
+# @TODO run containers as non-root
+# @TODO https://github.com/HaveAGitGat/Tdarr
+# @TODO https://github.com/TheUltimateC0der/Listrr
+# @TODO tailscale container instead of (or in addition to?) on metal?
+# @TODO off-load plex trasncoding https://github.com/UnicornTranscoder/UnicornTranscoder
+
+# p2p related apps: https://teddit.net/r/radarr/comments/hbwnb2/a_list_of_all_companion_tools_and_software/
+#
+
+volumes:
+  bazarr-tailscale-config:
+  flaresolverr-tailscale-config:
+  overseerr-tailscale-config:
+  prowlarr-tailscale-config:
+  radarr-tailscale-config:
+  sonarr-tailscale-config:
+  tdarr-tailscale-config:
+  transmission-tailscale-config:
+  whoami-tailscale-config:
+  wiki-tailscale-config:
+  readarr-tailscale-config:
+  plex-tailscale-config:
+  dsm-tailscale-config:
+  portainer-tailscale-config:
+  ssh-tailscale-config:
+  caddy-data:
+  caddy-config:
+  tailscale-socket:
+  transmission-ts-state:
+  portainer-data:
+
+networks:
+  bazarr:
+  flaresolverr:
+  overseerr:
+  prowlarr:
+  radarr:
+  sonarr:
+  tdarr:
+  transmission:
+  whoami:
+  wiki:
+  readarr:
+  portainer:
+  apps:
+  management:
+  socket_proxy:

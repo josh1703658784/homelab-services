@@ -18,6 +18,6 @@ function main(){
 
   # https://github.com/lucaslorentz/caddy-docker-proxy#basic-usage-example-using-docker-compose
   # this network must be created external to the docker-compose file
-  docker network create caddy
+#  docker network create caddy
 }
 main

@@ -1,0 +1,361 @@
+---
+
+version: "3.7"
+services:
+
+  #proxy:
+  #  # @TODO split into two containers: https://github.com/nginx-proxy/nginx-proxy#separate-containers
+  #  image: jwilder/nginx-proxy:alpine # alpine latest image
+  #  #image: nginxproxy/nginx-proxy
+  #    #read_only: true
+  #  tmpfs:
+  #    - /etc/nginx/dhparam/
+  #    - /var/cache/nginx/client_temp/
+  #    - /var/cache/nginx/proxy_temp/
+  #    - /var/cache/nginx/fastcgi_temp/
+  #    - /var/cache/nginx/uwsgi_temp/
+  #    - /var/cache/nginx/scgi_temp/
+  #    - /var/run/
+  #    - /etc/nginx/conf.d/
+  #    - /etc/nginx/certs/
+  #    - /tmp
+  #  cap_drop:
+  #    - all
+  #  cap_add:
+  #    - net_bind_service  # for access to port 80 (<1024)
+  #    - chown             # @TODO fix this in forked dockerfile
+  #    - setgid            # @TODO fix this in forked dockerfile
+  #    - setuid            # @TODO fix this in forked dockerfile
+  #  environment:
+  #    - DEFAULT_HOST=whoami.nas.stonecat-shark.ts.net
+  #  ports:
+  #    # https://tonylawrence.com/posts/unix/synology/freeing-port-80/
+  #    - 9980:80
+  #    - 9999:80
+  #  volumes:
+  #    - /var/run/docker.sock:/tmp/docker.sock:ro
+  #    - ${SERVICES}/nginx-proxy/certs:/etc/nginx/certs:ro
+  #  restart: always
+
+
+  whoami:
+    image: containous/whoami
+    networks:
+      whoami:
+      apps:
+        aliases:
+          - whoami
+    expose:
+      - 80
+
+  transmission:
+    image: haugene/transmission-openvpn:latest
+    networks:
+      transmission:
+      apps:
+        aliases:
+          - transmission
+    cap_drop:
+      - ALL
+    cap_add:
+      - net_admin     # DOCUMENTED REQUIREMENT
+      - mknod         # ALLOWS CREATION OF TUN/TAP IN /dev/net/tun
+      - net_raw       # FOR PING IN HEALTHCHECK
+      - setgid        # @TODO REVOLVE THIS WITH A FORKED DOCKERFILE
+      - dac_override  # @TODO HIGH VULN, FIX WITH FORKED DOCKERFILE
+      - setuid
+    tmpfs:
+      - /tmp
+      - /config # data is copied to here
+    volumes:
+      - ${TRANSMISSION_DATA}/data:/data
+      # > openvpn-pre-start.sh copies the on-disk readonly openvpn config to a directory where it is modified
+      # > by this container/service. It is not desirable to have these changes written back to disk.
+      # > I much prefer having the modifications done from a pristine config every time
+      - ${VPN_DATA}/config/openvpn-pre-start.sh:/scripts/openvpn-pre-start.sh:ro
+      - ${VPN_DATA}/config/mullvad_userpass.txt:/config/openvpn-credentials.txt:ro
+      - ${VPN_DATA}/config/mullvad_ch_zrh.ovpn:/readonly_vpn_config.ovpn:ro
+    environment:
+      - NETWORK_ACCESS=internal
+      - VIRTUAL_HOST=transmission.${LOCAL},trans.${LOCAL},trans.nas.ts
+      - VIRTUAL_PORT=9091
+      - OPENVPN_PROVIDER=custom
+      - OPENVPN_CONFIG=vpn_config
+      - LOCAL_NETWORK=192.168.12.0/24
+      - TRANSMISSION_PEER_PORT=56004
+      - TRANSMISSION_PORT_FORWARDING_ENABLED=true
+      - TRANSMISSION_ENCRYPTION=1 # prefer encrypted connections but not required
+      - TRANSMISSION_PREFETCH_ENABLED=true
+      - DROP_DEFAULT_ROUTE=true # maybe works, maybe breaks
+      - LOG_TO_STDOUT=true
+        #- PUID="${PUID}"
+        #- PGID="${PGID}"
+        #labels:
+        #  caddy: transmission.caddy.local
+        #  caddy.reverse_proxy: "{{upstreams 9091}}"
+    expose:
+      - 9091
+    ports:
+      - 9091:9091
+    sysctls:
+      - "net.ipv6.conf.all.disable_ipv6=0"
+    restart: always
+  
+
+  # @TODO try to put this in bridge networking
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    network_mode: host
+    environment:
+      #- NETWORK_ACCESS=internal
+      - PUID="${PUID}"
+      - PGID="${PGID}"
+      - VERSION=docker
+        #- ADVERTISE_IP=http://192.168.12.184:32400/
+      - ADVERTISE_IP=http://plex.${LOCAL}:32400/
+      - ALLOWED_NETWORKS=192.168.12.0/8  #192.168.1.0/24
+      - TZ="${TZ}"
+    volumes:
+      - ${PLEX_DATA}/config:/config
+      - ${PLEX_DATA}/movies-handbrake-encodes:/movies-handbrake-encodes:ro
+      - ${PLEX_DATA}/tv-handbrake-encodes:/tv-handbrake-encodes:ro
+      - ${SONARR_DATA}/media-organized:/tv-organized:ro
+      - ${RADARR_DATA}/media-organized:/movies-organized:ro
+    tmpfs:
+      - /tmp
+        #tmpfs:
+        #  - /var/run/s6:exec
+        #  - /app
+        #  - /defaults
+    restart: always
+
+ 
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    networks:
+      radarr:
+      apps:
+        aliases:
+          - radarr
+      #user: '1026'
+    tmpfs:
+      #- /var/run/s6:exec,rw
+      - /tmp
+    cap_drop:
+      - all
+    cap_add:
+      - setgid        # @TODO REVOLVE THIS WITH A FORKED DOCKERFILE
+      - setuid
+      - chown # @TODO fix this in forked dockerfile
+    environment:
+      - S6_READ_ONLY_ROOT=1
+      - S6_BEHAVIOUR_IF_STAGE2_FAILS=2
+      - PUID="${PUID}"
+      - PGID="${PGID}"
+      - TZ="${TZ}"
+      - VIRTUAL_HOST=radarr.${LOCAL},movies.${LOCAL}
+      - VIRTUAL_PORT=7878
+    volumes:
+      - ${RADARR_DATA}/config:/config
+      - ${RADARR_DATA}/media-organized:/data/media-organized
+      - ${RADARR_DATA}/media-recycling-bin:/data/media-recycling-bin
+      - ${TRANSMISSION_DATA}/data/completed/:/data/completed/
+    expose:
+      - 7878
+    restart: always
+  
+  
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    networks:
+      sonarr:
+      apps:
+        aliases:
+          - sonarr
+    cap_drop:
+      - all
+    cap_add:
+      - setgid
+      - setuid
+      - chown
+    tmpfs:
+      #- /var/run/s6:exec,rw
+      - /tmp
+    environment:
+      #- S6_READ_ONLY_ROOT=1
+      - NETWORK_ACCESS=internal
+      - PUID="${PUID}"
+      - PGID="${PGID}"
+      - TZ="${TZ}"
+      - VIRTUAL_HOST=sonarr.${LOCAL},tv.${LOCAL},sonarr.nas.ts
+      - VIRTUAL_PORT=8989
+    volumes:
+      - ${SONARR_DATA}/config:/config
+      - ${SONARR_DATA}/media-organized:/data/media-organized
+      - ${SONARR_DATA}/media-recycling-bin:/data/media-recycling-bin
+      - ${TRANSMISSION_DATA}/data/completed:/data/completed
+    expose:
+      - 8989
+    restart: always
+
+
+#  tdarr:
+#    image: ghcr.io/haveagitgat/tdarr:latest
+#    restart: always
+#    networks:
+#      tdarr:
+#      apps:
+#        aliases:
+#          - tdarr
+#    ports:
+#      - 8266:8266 # server port
+#    environment:
+#      - TZ="${TZ}"
+#        #- PUID=${PUID}
+#        #- PGID="${PGID}"${PGID}
+#      - UMASK_SET=002
+#      - serverIP=0.0.0.0
+#      - serverPort=8266
+#      - webUIPort=8265
+#      - internalNode=false
+#      - inContainer=true
+#      - nodeName=NotANode
+#      - NETWORK_ACCESS=internal
+#      - VIRTUAL_HOST=tdarr.${LOCAL},transcode.${LOCAL}
+#      - VIRTUAL_PORT=8265
+#    volumes:
+#      - ${TDARR_DATA}/app/server:/app/server
+#      - ${TDARR_DATA}/app/configs:/app/configs
+#      - ${TDARR_DATA}/app/logs:/app/logs
+#        #- /media:/media
+#        #- /transcode_cache:/temp
+  
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:develop
+    networks:
+      prowlarr:
+      apps:
+        aliases:
+          - prowlarr
+    environment:
+      - PUID="${PUID}"
+      - PGID="${PGID}"
+      - S6_READ_ONLY_ROOT=1
+      - NETWORK_ACCESS=internal
+      - VIRTUAL_HOST=prowlarr.${LOCAL}
+      - VIRTUAL_PORT=9696
+      - TZ="${TZ}"
+    expose: 
+      - 9696
+    volumes:
+      - ${PROWLARR_DATA}/config:/config
+    tmpfs:
+      - /tmp
+    restart: always
+
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    networks:
+      bazarr:
+      apps:
+        aliases:
+          - bazarr
+    environment:
+      - NETWORK_ACCESS=internal
+      - PUID="${PUID}"
+      - PGID="${PGID}"
+      - TZ=${TZ}
+      - VIRTUAL_HOST=subs.${LOCAL},subtitles.${LOCAL},bazarr.${LOCAL},subtitles.${LOCAL}
+      - VIRTUAL_PORT=6767
+    cap_drop:
+      - all
+    cap_add:
+      - setgid
+      - setuid
+      - chown
+    volumes:
+      - ${BAZARR_DATA}/config:/config
+      - ${BAZARR_DATA}/downloaded_subtitles:/subtitles
+      - ${SONARR_DATA}/media-organized:/tv
+      - ${RADARR_DATA}/media-organized:/movies
+    tmpfs:
+      - /tmp
+    expose:
+      - 6767
+    restart: always
+
+ 
+  overseerr:
+    image: lscr.io/linuxserver/overseerr:latest
+    networks:
+      overseerr:
+      apps:
+        aliases:
+          - overseer
+    environment:
+      - NETWORK_ACCESS=internal
+      - PUID="${PUID}"
+      - PGID="${PGID}"
+      - TZ="${TZ}"
+      - VIRTUAL_HOST=overseerr.${LOCAL},requests.${LOCAL}
+      - VIRTUAL_PORT=5055
+    volumes:
+      - ${OVERSEERR_DATA}/config:/config
+    tmpfs:
+      - /tmp
+    expose:
+      - 5055
+    restart: always
+  
+ 
+  # Bypasses Cloud Flare
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:v1.2.9 # prowlerr does not support v2
+    user: "nobody:nobody"
+    networks:
+      flaresolverr:
+      apps:
+        aliases:
+          - flarsolverr
+    read_only: true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp
+    environment:
+      - NETWORK_ACCESS=internal
+        #- CAPTCHA_SOLVER=anticaptcha
+        #- ANTI_CAPTCHA_APIKEY=123456789
+      - TZ="${TZ}"
+      - VIRTUAL_HOST=flaresolverr.${LOCAL},flare.${LOCAL}
+      - VIRTUAL_PORT=8191
+    expose:
+      - 8191
+    restart: always
+  
+
+      #  readarr:
+      #    image: lscr.io/linuxserver/readarr:develop
+      #    networks:
+      #      readarr:
+      #      apps:
+      #        aliases:
+      #          - radarr
+      #    environment:
+      #      - PUID="${PUID}"
+      #      - PGID="${PGID}"
+      #      - TZ="${TZ}"
+      #      - NETWORK_ACCESS=internal
+      #      - VIRTUAL_HOST=readarr.${LOCAL},read.${LOCAL},books.${LOCAL}
+      #      - VIRTUAL_PORT=8787
+      #    volumes:
+      #      - ${READARR_DATA}/config:/config
+      #      - ${READARR_DATA}/books:/books:ro
+      #        #  - ${SERVICES}/transmission/data/completed:/downloads:ro
+      #    restart: unless-stopped
+ 
+
+ 

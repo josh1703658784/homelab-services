@@ -1,5 +1,0 @@
-#machine-name.domain-alias.ts.net
-nas.stonecat-shark.ts.net
-
-root * /var/www
-file_server
