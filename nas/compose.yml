@@ -3,11 +3,11 @@
 version: "3.7"
 
 include:
-  - path: ./compose-files/private-tailscale-services/compose.yml
-    env_file: ./.env
   - path: ./compose-files/apps/compose.yml
     env_file: ./.env
   - path: ./compose-files/management/compose.yml
+    env_file: ./.env
+  - path: ./compose-files/private-tailscale-services/compose.yml
     env_file: ./.env
 
 
@@ -40,11 +40,14 @@ volumes:
   dsm-tailscale-config:
   portainer-tailscale-config:
   ssh-tailscale-config:
+  seafile-tailscale-config:
   caddy-data:
   caddy-config:
   tailscale-socket:
   transmission-ts-state:
   portainer-data:
+  tmp-seafile:
+  tmp-seafile-db:
 
 networks:
   bazarr:
@@ -60,5 +63,19 @@ networks:
   readarr:
   portainer:
   apps:
+  plex:
   management:
+  recyclarr:
   socket_proxy:
+  seafile:
+  seafile-svc:
+  plex-lan:
+    driver: macvlan
+    driver_opts:
+      parent: eth0
+      macvlan_mode: private
+    ipam:
+      config:
+      - subnet: 10.0.0.0/27
+        ip_range: 10.0.0.30/32
+        gateway: 10.0.0.1

@@ -4,13 +4,15 @@ version: "3.7"
 services:
 
   portainer:
-    image: portainer/portainer-ce:alpine
+    image: ghcr.io/joshuaks/portainer:latest #portainer/portainer-ce:alpine
+    read_only: true
+    cap_drop:
+      - ALL
     networks:
       - management
       - socket_proxy
     volumes:
       - portainer-data:/data
-        #- /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - DOCKER_HOST=tcp://socket-proxy:2375
     restart: always
@@ -18,7 +20,7 @@ services:
       - 9443
     ports:
       - 9443:9443
-    command: -H tcp://socket-proxy:2375
+    command: --host tcp://socket-proxy:2375
 
 
   homepage:
@@ -44,10 +46,12 @@ services:
       - socket_proxy
     cap_drop:
       - ALL
-    ports:
-     - "2375:2375"
+        #ports:
+        # - "2375:2375"
+    expose:
+      - 2375
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     tmpfs:
       - /run/
       - /var/lib/haproxy

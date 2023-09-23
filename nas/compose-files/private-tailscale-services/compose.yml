@@ -4,16 +4,46 @@ version: "3.7"
 
 services:
 
+
+
+
+  test:
+    build:
+      context: ./dockerfiles/test/
+    image: test:latest
+        #image: tailscale/tailscale:latest
+    networks:
+      - transmission
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY}
+        #entrypoint: tailscale
+      #command: serve https / http://transmission:9091
+
   whoami-svc:
     image: ghcr.io/markpash/tailscale-sidecar:latest
+    read_only: true
     networks:
       - whoami
     environment:
       - TS_AUTHKEY=${TS_AUTHKEY}
       - TS_SIDECAR_NAME=whoami
+      - TS_SOCKET=/var/run/tailscale/tailscaled.sock
     volumes:
       - whoami-tailscale-config:/home/nonroot
       - ${TS_SIDECAR_BINDINGS_LHS}/whoami.bindings.json:${TS_SIDECAR_BINDINGS_RHS}:ro
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -126,15 +156,15 @@ services:
       - ${TS_SIDECAR_BINDINGS_LHS}/flaresolverr.bindings.json:${TS_SIDECAR_BINDINGS_RHS}:ro
   
   
-  plex-svc:
-    image: ghcr.io/markpash/tailscale-sidecar:latest
-    network_mode: host
-    environment:
-      - TS_AUTHKEY=${TS_AUTHKEY}
-      - TS_SIDECAR_NAME=plex
-    volumes:
-      - plex-tailscale-config:/home/nonroot
-      - ${TS_SIDECAR_BINDINGS_LHS}/plex.bindings.json:${TS_SIDECAR_BINDINGS_RHS}:ro
+        #  plex-svc:
+        #    image: ghcr.io/markpash/tailscale-sidecar:latest
+        #    network_mode: host
+        #    environment:
+        #      - TS_AUTHKEY=${TS_AUTHKEY}
+        #      - TS_SIDECAR_NAME=plex
+        #    volumes:
+        #      - plex-tailscale-config:/home/nonroot
+        #      - ${TS_SIDECAR_BINDINGS_LHS}/plex.bindings.json:${TS_SIDECAR_BINDINGS_RHS}:ro
  
    
   dsm-svc:
@@ -157,3 +187,15 @@ services:
     volumes:
       - portainer-tailscale-config:/home/nonroot
       - ${TS_SIDECAR_BINDINGS_LHS}/portainer.bindings.json:${TS_SIDECAR_BINDINGS_RHS}:ro
+
+
+  seafile-svc:
+    image: ghcr.io/markpash/tailscale-sidecar:latest
+    networks: 
+      - seafile-svc
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY}
+      - TS_SIDECAR_NAME=seafile
+    volumes:
+      - seafile-tailscale-config:/home/nonroot
+      - ${TS_SIDECAR_BINDINGS_LHS}/seafile.bindings.json:${TS_SIDECAR_BINDINGS_RHS}:ro

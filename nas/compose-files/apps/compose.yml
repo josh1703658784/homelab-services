@@ -1,6 +1,7 @@
 ---
 
 version: "3.7"
+
 services:
 
   #proxy:
@@ -36,17 +37,30 @@ services:
   #    - /var/run/docker.sock:/tmp/docker.sock:ro
   #    - ${SERVICES}/nginx-proxy/certs:/etc/nginx/certs:ro
   #  restart: always
+  #whoami:
+  #  image: tailscale/tailscale
+  #    #networks:
+  #    #  - whoami
+  #  environment:
+  #    - TS_AUTHKEY=${TS_AUTHKEY}
+  #    - TS_SIDECAR_NAME=whoami-new
+  #      TS_ACCEPT_DNS=true
+  #      TS_HOSTNAME=whoami-test
+  #      #network_mode: service:whoami
+  #  command: /usr/local/bin/containerboot && tailscale -socket=/tmp/tailscaled.sock serve https / text:"Hello, world!"
 
 
-  whoami:
-    image: containous/whoami
-    networks:
-      whoami:
-      apps:
-        aliases:
-          - whoami
-    expose:
-      - 80
+
+      #  whoami:
+      #    image: containous/whoami
+      #    network_mode: service:whoami-ts
+      #      #networks:
+      #      #  whoami:
+      #      #  apps:
+      #      #    aliases:
+      #      #      - whoami
+      #      #    expose:
+      #      #      - 80
 
   transmission:
     image: haugene/transmission-openvpn:latest
@@ -105,15 +119,19 @@ services:
   # @TODO try to put this in bridge networking
   plex:
     image: lscr.io/linuxserver/plex:latest
-    network_mode: host
+    networks:
+      plex-lan:
+        ipv4_address: 10.0.0.30
+    mac_address: 02-42-0a-00-00-1e
+      #network_mode: host
     environment:
       #- NETWORK_ACCESS=internal
       - PUID="${PUID}"
       - PGID="${PGID}"
       - VERSION=docker
         #- ADVERTISE_IP=http://192.168.12.184:32400/
-      - ADVERTISE_IP=http://plex.${LOCAL}:32400/
-      - ALLOWED_NETWORKS=192.168.12.0/8  #192.168.1.0/24
+        #- ADVERTISE_IP=http://plex.${LOCAL}:32400/
+      #- ALLOWED_NETWORKS=192.168.12.0/8  #192.168.1.0/24
       - TZ="${TZ}"
     volumes:
       - ${PLEX_DATA}/config:/config
@@ -358,4 +376,83 @@ services:
       #    restart: unless-stopped
  
 
- 
+  recyclarr:
+    image: ghcr.io/recyclarr/recyclarr
+    user: 1000:1000
+    networks: 
+      - recyclarr
+    volumes:
+      #- ${RECYCLARR_DATA}/config:/config
+      - ${RECYCLARR_DATA}:/recyclarr_data
+    environment:
+      - TZ="${TZ}"
+      - RECYCLARR_CREATE_CONFIG=true
+        
+
+
+
+
+  seafile-db:
+    image: mariadb:10.6
+    environment:
+      - MYSQL_ROOT_PASSWORD=${SEAFILE_DB_ROOT_PASSWORD} # Requested, set the root's password of MySQL service. CHANGE ON FIRST LOGIN
+      - MYSQL_LOG_CONSOLE=true
+    volumes:
+      - ${SEAFILE_DATA}/var/lib/mysql:/var/lib/mysql  # Requested, specifies the path to MySQL data persistent store.
+      #- tmp-seafile-db:/var/lib/mysql  # Requested, specifies the path to MySQL data persistent store.
+    networks:
+      seafile:
+        aliases:
+          - db # default used by seafile image
+
+  seafile-cache:
+    image: memcached:1.6.18
+    entrypoint: memcached -m 256
+    networks:
+      seafile:
+        aliases:
+          - memcached # default used by seafile image
+          
+  seafile:
+    image: seafileltd/seafile-mc:latest
+    ports:
+      - "9980:80"
+#     - "443:443"  # If https is enabled, cancel the comment.
+    volumes:
+      - ${SEAFILE_DATA}/shared:/shared   # Requested, specifies the path to Seafile data persistent store.
+        #- tmp-seafile:/shared   # Requested, specifies the path to Seafile data persistent store.
+    environment:
+      - DB_HOST=db
+      - DB_ROOT_PASSWD=${SEAFILE_DB_ROOT_PASSWORD}  # Requested, the value should be root's password of MySQL service.
+      - TIME_ZONE=${TZ}  # Optional, default is UTC. Should be uncomment and set to your local time zone.
+      - SEAFILE_ADMIN_EMAIL=${SEAFILE_ADMIN_EMAIL} # Specifies Seafile admin user, default is 'me@example.com'.
+      - SEAFILE_ADMIN_PASSWORD=${SEAFILE_ADMIN_PASSWORD} # Specifies Seafile admin password, default is 'asecret'.
+      - SEAFILE_SERVER_LETSENCRYPT=false   # Whether to use https or not.
+      - SEAFILE_SERVER_HOSTNAME=seafile.stonecat-shark.ts.net # Specifies your host name if https is enabled.
+        #    healthcheck:
+        #      test: wget --no-verbose --tries=1 --spider http://localhost
+    depends_on:
+      seafile-db:
+        condition: service_started
+      seafile-cache:
+        condition: service_started
+    networks:
+      - seafile
+      - seafile-svc
+
+
+
+  resilio-sync:
+    image: lscr.io/linuxserver/resilio-sync:latest
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    volumes:
+      - ${RESILIO_SYNC_DATA}/config:/config
+      - ${RESILIO_SYNC_DATA}/downloads:/downloads
+      - ${RESILIO_SYNC_DATA}/sync:/sync
+    ports:
+      - 8888:8888
+      - 55555:55555
+    restart: unless-stopped
