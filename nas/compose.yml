@@ -48,6 +48,7 @@ volumes:
   portainer-data:
   tmp-seafile:
   tmp-seafile-db:
+  tailscale-state:
 
 networks:
   bazarr:

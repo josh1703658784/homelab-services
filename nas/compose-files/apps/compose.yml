@@ -64,6 +64,8 @@ services:
 
   transmission:
     image: haugene/transmission-openvpn:latest
+      #network_mode: "service:test"
+      #network_mode: "service:transmission"
     networks:
       transmission:
       apps:
@@ -107,10 +109,10 @@ services:
         #labels:
         #  caddy: transmission.caddy.local
         #  caddy.reverse_proxy: "{{upstreams 9091}}"
-    expose:
-      - 9091
-    ports:
-      - 9091:9091
+        #expose:
+        #- 9091
+        #ports:
+      #- 9091:9091
     sysctls:
       - "net.ipv6.conf.all.disable_ipv6=0"
     restart: always
@@ -119,11 +121,11 @@ services:
   # @TODO try to put this in bridge networking
   plex:
     image: lscr.io/linuxserver/plex:latest
-    networks:
-      plex-lan:
-        ipv4_address: 10.0.0.30
-    mac_address: 02-42-0a-00-00-1e
-      #network_mode: host
+      #networks:
+      #plex-lan:
+      #ipv4_address: 10.0.0.30
+      #mac_address: 02-42-0a-00-00-1e
+    network_mode: host
     environment:
       #- NETWORK_ACCESS=internal
       - PUID="${PUID}"
@@ -139,6 +141,8 @@ services:
       - ${PLEX_DATA}/tv-handbrake-encodes:/tv-handbrake-encodes:ro
       - ${SONARR_DATA}/media-organized:/tv-organized:ro
       - ${RADARR_DATA}/media-organized:/movies-organized:ro
+    expose:
+      - 32400
     tmpfs:
       - /tmp
         #tmpfs:
@@ -439,20 +443,3 @@ services:
     networks:
       - seafile
       - seafile-svc
-
-
-
-  resilio-sync:
-    image: lscr.io/linuxserver/resilio-sync:latest
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=${TZ}
-    volumes:
-      - ${RESILIO_SYNC_DATA}/config:/config
-      - ${RESILIO_SYNC_DATA}/downloads:/downloads
-      - ${RESILIO_SYNC_DATA}/sync:/sync
-    ports:
-      - 8888:8888
-      - 55555:55555
-    restart: unless-stopped
