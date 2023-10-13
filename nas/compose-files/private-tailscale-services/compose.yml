@@ -4,6 +4,13 @@ version: "3.7"
 
 services:
 
+  caddy-tailscale:
+    image: tailscale-caddy
+    build:
+      context: ./dockerfiles/caddy-tailscale
+      dockerfile: Dockerfile
+    env_file: ./dockerfiles/caddy-tailscale/values.env
+
 
 
 

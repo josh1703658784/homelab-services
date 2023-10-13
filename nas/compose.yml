@@ -70,13 +70,3 @@ networks:
   socket_proxy:
   seafile:
   seafile-svc:
-  plex-lan:
-    driver: macvlan
-    driver_opts:
-      parent: eth0
-      macvlan_mode: private
-    ipam:
-      config:
-      - subnet: 10.0.0.0/27
-        ip_range: 10.0.0.30/32
-        gateway: 10.0.0.1
