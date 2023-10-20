@@ -70,3 +70,4 @@ networks:
   socket_proxy:
   seafile:
   seafile-svc:
+  caddy-tailscale-test:

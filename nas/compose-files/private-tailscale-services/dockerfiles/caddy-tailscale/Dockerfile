@@ -35,4 +35,4 @@ RUN echo "$TAILSCALE_VERSION" > /VERSION
 # Add the modified startup script
 COPY start.sh /usr/bin/start.sh
 RUN chmod 755 /usr/bin/start.sh
-CMD  [ "start.sh" ]
+CMD  [ "sh", "/usr/bin/start.sh" ]

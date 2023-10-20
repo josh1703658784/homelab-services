@@ -63,7 +63,7 @@ services:
       #      #      - 80
 
   transmission:
-    image: haugene/transmission-openvpn:latest
+    image: haugene/transmission-openvpn
       #network_mode: "service:test"
       #network_mode: "service:transmission"
     networks:
@@ -84,7 +84,9 @@ services:
       - /tmp
       - /config # data is copied to here
     volumes:
-      - ${TRANSMISSION_DATA}/data:/data
+        #- ${TRANSMISSION_DATA}/data/transmission-home:/data/transmission-home
+      - ${TRANSMISSION_DATA}/data:/data # @TODO: NEW DEFAULT DIR: /config/transmission-home
+      - ${HARDLINK_MEDIA}:/media-organized
       # > openvpn-pre-start.sh copies the on-disk readonly openvpn config to a directory where it is modified
       # > by this container/service. It is not desirable to have these changes written back to disk.
       # > I much prefer having the modifications done from a pristine config every time
@@ -111,8 +113,8 @@ services:
         #  caddy.reverse_proxy: "{{upstreams 9091}}"
         #expose:
         #- 9091
-        #ports:
-      #- 9091:9091
+    ports:
+      - 9091:9091
     sysctls:
       - "net.ipv6.conf.all.disable_ipv6=0"
     restart: always
@@ -137,10 +139,14 @@ services:
       - TZ="${TZ}"
     volumes:
       - ${PLEX_DATA}/config:/config
-      - ${PLEX_DATA}/movies-handbrake-encodes:/movies-handbrake-encodes:ro
-      - ${PLEX_DATA}/tv-handbrake-encodes:/tv-handbrake-encodes:ro
-      - ${SONARR_DATA}/media-organized:/tv-organized:ro
-      - ${RADARR_DATA}/media-organized:/movies-organized:ro
+        #- ${PLEX_DATA}/movies-handbrake-encodes:/movies-handbrake-encodes:ro
+        #- ${PLEX_DATA}/tv-handbrake-encodes:/tv-handbrake-encodes:ro
+
+      - ${SONARR_DATA}/media-organized:/tv-organized
+      - ${HARDLINK_MEDIA}/sonarr-media:/tv-organized-hardlink
+
+      - ${RADARR_DATA}/media-organized:/movies-organized
+      - ${HARDLINK_MEDIA}/radarr-media:/movies-organized-hardlink
     expose:
       - 32400
     tmpfs:
@@ -179,9 +185,10 @@ services:
       - VIRTUAL_PORT=7878
     volumes:
       - ${RADARR_DATA}/config:/config
-      - ${RADARR_DATA}/media-organized:/data/media-organized
-      - ${RADARR_DATA}/media-recycling-bin:/data/media-recycling-bin
-      - ${TRANSMISSION_DATA}/data/completed/:/data/completed/
+      - ${HARDLINK_MEDIA}:/media-organized
+        #- ${SHARED_RADARR_DATA}:/data/media-organized
+        #- ${SHARED_RADARR_DATA}/media-recycling-bin:/data/media-recycling-bin
+        #- ${SHARED_TRANSMISSION_DATA}:/data/completed/
     expose:
       - 7878
     restart: always
@@ -214,9 +221,10 @@ services:
       - VIRTUAL_PORT=8989
     volumes:
       - ${SONARR_DATA}/config:/config
-      - ${SONARR_DATA}/media-organized:/data/media-organized
-      - ${SONARR_DATA}/media-recycling-bin:/data/media-recycling-bin
-      - ${TRANSMISSION_DATA}/data/completed:/data/completed
+      - ${HARDLINK_MEDIA}:/media-organized
+        #- ${SONARR_DATA}/media-organized:/data/media-organized
+        #- ${SONARR_DATA}/media-recycling-bin:/data/media-recycling-bin
+        #- ${TRANSMISSION_DATA}/data/completed:/data/completed
     expose:
       - 8989
     restart: always

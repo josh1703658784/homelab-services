@@ -5,46 +5,16 @@ version: "3.7"
 services:
 
   caddy-tailscale:
-    image: tailscale-caddy
     build:
       context: ./dockerfiles/caddy-tailscale
       dockerfile: Dockerfile
     env_file: ./dockerfiles/caddy-tailscale/values.env
+    networks:
+      - caddy-tailscale-test
+      #entrypoint: sh /usr/bin/start.sh 
 
 
 
-
-  test:
-    image: tailscale/tailscale
-    #build:
-    #context: ./dockerfiles/test/
-        #image: test:latest
-        #network_mode: "service:transmission"
-      #networks:
-      #- transmission
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    environment:
-      - TS_AUTHKEY=${TS_AUTHKEY}
-      - TS_SIDECAR_NAME=test
-    entrypoint: tailscale
-    command: serve https / http://localhost:9091
-
-  #  test:
-  #    image: ghcr.io/elliotmatson/tailscale-sidecar-proxy:latest
-  #    environment:
-  #      TAILSCALE_STATE_DIR: /var/lib/tailscale
-  #      TAILSCALE_AUTH_KEY: ${TS_AUTHKEY}
-  #      TAILSCALE_HOSTNAME: TEST
-  #      #TAILSCALE_SSH: true
-  #      #TAILSCALE_FUNNEL:
-  #      #TAILSCALE_EXIT_NODE:
-  #      TAILSCALE_SERVE_PORT: 443
-  #      TAILSCALE_SERVE_MODE: https
-  #      TAILSCALE_SERVE_SOURCE_MODE: http
-  #    volumes:
-  #      - tailscale-state:/var/lib/tailscale
 
 
   whoami-svc:
@@ -60,26 +30,6 @@ services:
       - whoami-tailscale-config:/home/nonroot
       - ${TS_SIDECAR_BINDINGS_LHS}/whoami.bindings.json:${TS_SIDECAR_BINDINGS_RHS}:ro
 
-
-
-
-
-
-
-
-
-
-
-
-        #transmission-svc:
-        #  image: ghcr.io/shayne/tsnet-serve:latest
-        #  volumes:
-        #    - transmission-ts-state:/state
-        #  environment:
-        #    - TSNS_HOSTNAME=transmission
-        #    - TSNS_BACKEND=transmission:9091
-        #    - TS_AUTHKEY=${TS_AUTHKEY}
-    
 
   transmission-svc:
     image: ghcr.io/markpash/tailscale-sidecar:latest
