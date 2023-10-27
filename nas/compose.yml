@@ -3,12 +3,14 @@
 version: "3.7"
 
 include:
-  - path: ./compose-files/apps/compose.yml
-    env_file: ./.env
+  - path: ./compose-files/media-apps/compose.yml
+  - path: ./compose-files/documents-apps/compose.yml
+    #env_file: ./.env
+    #env_file: ./.env
   - path: ./compose-files/management/compose.yml
-    env_file: ./.env
   - path: ./compose-files/private-tailscale-services/compose.yml
-    env_file: ./.env
+    #env_file: ./.env
+    #env_file: ./.env
 
 
 # CAP_ADD/DROP information: http://rhelblog.redhat.com/2016/10/17/secure-your-containers-with-this-one-weird-trick/

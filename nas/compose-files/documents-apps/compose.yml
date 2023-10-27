@@ -1,0 +1,141 @@
+---
+
+version: "3.7"
+
+services:
+
+  # Tailscale container
+  tailscale:
+    hostname: seafile-ts         # This will become the tailscale device name
+    image: tailscale/tailscale
+    volumes:
+      - tailscale:/var/lib/tailscale        # State data will be stored in this directory
+      - "/dev/net/tun:/dev/net/tun"         # Required for tailscale to work
+    cap_add:                                # Required for tailscale to work
+      - net_admin
+      - sys_module
+    command: tailscaled
+    restart: unless-stopped
+  #
+  # Caddy: Proxy + TLS
+  caddy:
+    image: caddy:alpine
+    network_mode: service:tailscale
+    tmpfs:
+      /data
+    volumes:
+      #- caddy_data:/data
+      - ${CADDY_DATA}/etc/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - tailscale
+      - seafile-service
+    restart: unless-stopped
+  #
+  db:
+    image: mariadb:10.5
+    environment:
+      MYSQL_ROOT_PASSWORD: ${SEAFILE_DB_ROOT_PASSWORD} # Requested, set the root's password of MySQL service.
+      MYSQL_LOG_CONSOLE: true
+    volumes:
+      #- db:/var/lib/mysql  # Requested, specifies the path to MySQL data persistent store.
+      - /var/services/homes/freon.repel.misrule/docker_apps/seafile_db/root/var/lib/mysql:/var/lib/mysql
+    restart: unless-stopped
+  
+  memcached:
+    image: memcached:1.6
+    entrypoint: memcached -m 256
+  #
+  seafile-service:    # note: make sure this isn't the same as tailscale "hostname"
+    image: seafileltd/seafile-mc:latest
+    hostname: seafile-service
+    volumes:
+      #- data:/shared   # Requested, specifies the path to Seafile data persistent store.
+      - ${SEAFILE_DATA}/shared:/shared
+    environment:
+      DB_HOST: db
+      DB_ROOT_PASSWD: ${SEAFILE_DB_ROOT_PASSWORD}  # Requested, the value shuold be root's password of MySQL service.
+        #TIME_ZONE: America/Seattle  # Optional, default is UTC. Should be uncomment and set to your local time zone.
+        #SEAFILE_ADMIN_EMAIL: # Specifies Seafile admin user, default is 'me@example.com'.
+        #SEAFILE_ADMIN_PASSWORD:     # Specifies Seafile admin password, default is 'asecret'.
+      SEAFILE_SERVER_LETSENCRYPT: false   # Whether to use https or not.
+      #SEAFILE_SERVER_HOSTNAME:
+    depends_on:
+      - db
+      - memcached
+    restart: unless-stopped
+  #
+volumes:
+  db:
+  data:
+  tailscale:
+  caddy_data:
+  #
+  #
+  #
+  #
+  #
+  #
+  #
+  #
+  #    ############
+  #    #
+  #    #
+  #    #
+  #    #
+  #    #
+  #    #
+  #    #
+  #    #
+  #    #
+  #    #
+  #
+
+
+
+  #  seafile-db:
+  #    image: mariadb:10.6
+  #    environment:
+  #      - MYSQL_ROOT_PASSWORD=${SEAFILE_DB_ROOT_PASSWORD} # Requested, set the root's password of MySQL service. CHANGE ON FIRST LOGIN
+  #      - MYSQL_LOG_CONSOLE=true
+  #    volumes:
+  #      - ${SEAFILE_DATA}/var/lib/mysql:/var/lib/mysql  # Requested, specifies the path to MySQL data persistent store.
+  #      #- tmp-seafile-db:/var/lib/mysql  # Requested, specifies the path to MySQL data persistent store.
+  #    networks:
+  #      seafile:
+  #        aliases:
+  #          - db # default used by seafile image
+  #
+  #  seafile-cache:
+  #    image: memcached:1.6.18
+  #    entrypoint: memcached -m 256
+  #    networks:
+  #      seafile:
+  #        aliases:
+  #          - memcached # default used by seafile image
+  #          
+  #  seafile:
+  #    image: seafileltd/seafile-mc:latest
+  #    ports:
+  #      - "9980:80"
+  ##     - "443:443"  # If https is enabled, cancel the comment.
+  #    volumes:
+  #      - ${SEAFILE_DATA}/shared:/shared   # Requested, specifies the path to Seafile data persistent store.
+  #        #- tmp-seafile:/shared   # Requested, specifies the path to Seafile data persistent store.
+  #    environment:
+  #      - DB_HOST=db
+  #      - DB_ROOT_PASSWD=${SEAFILE_DB_ROOT_PASSWORD}  # Requested, the value should be root's password of MySQL service.
+  #      - TIME_ZONE=${TZ}  # Optional, default is UTC. Should be uncomment and set to your local time zone.
+  #      - SEAFILE_ADMIN_EMAIL=${SEAFILE_ADMIN_EMAIL} # Specifies Seafile admin user, default is 'me@example.com'.
+  #      - SEAFILE_ADMIN_PASSWORD=${SEAFILE_ADMIN_PASSWORD} # Specifies Seafile admin password, default is 'asecret'.
+  #      - SEAFILE_SERVER_LETSENCRYPT=false   # Whether to use https or not.
+  #      - SEAFILE_SERVER_HOSTNAME=seafile.stonecat-shark.ts.net # Specifies your host name if https is enabled.
+  #        #    healthcheck:
+  #        #      test: wget --no-verbose --tries=1 --spider http://localhost
+  #    depends_on:
+  #      seafile-db:
+  #        condition: service_started
+  #      seafile-cache:
+  #        condition: service_started
+  #    networks:
+  #      - seafile
+  #      - seafile-svc

@@ -64,8 +64,6 @@ services:
 
   transmission:
     image: haugene/transmission-openvpn
-      #network_mode: "service:test"
-      #network_mode: "service:transmission"
     networks:
       transmission:
       apps:
@@ -84,9 +82,8 @@ services:
       - /tmp
       - /config # data is copied to here
     volumes:
-        #- ${TRANSMISSION_DATA}/data/transmission-home:/data/transmission-home
       - ${TRANSMISSION_DATA}/data:/data # @TODO: NEW DEFAULT DIR: /config/transmission-home
-      - ${HARDLINK_MEDIA}:/media-organized
+      - ${MEDIA_MANAGEMENT}/downloads-transmission:/media-management/downloads-transmission
       # > openvpn-pre-start.sh copies the on-disk readonly openvpn config to a directory where it is modified
       # > by this container/service. It is not desirable to have these changes written back to disk.
       # > I much prefer having the modifications done from a pristine config every time
@@ -94,23 +91,23 @@ services:
       - ${VPN_DATA}/config/mullvad_userpass.txt:/config/openvpn-credentials.txt:ro
       - ${VPN_DATA}/config/mullvad_ch_zrh.ovpn:/readonly_vpn_config.ovpn:ro
     environment:
-      - NETWORK_ACCESS=internal
-      - VIRTUAL_HOST=transmission.${LOCAL},trans.${LOCAL},trans.nas.ts
-      - VIRTUAL_PORT=9091
+      # ENV VARS AVAILABLE: https://github.com/haugene/docker-transmission-openvpn/issues/517
+      - TRANSMISSION_DOWNLOAD_DIR=/media-management/downloads-transmission/complete
+      - TRANSMISSION_INCOMPLETE_DIR=/media-management/downloads-transmission/incomplete
+      - TRANSMISSION_INCOMPLETE_DIR_ENABLED=true
+      - TRANSMISSION_HOME=/data/transmission-home
+      - TRANSMISSION_WATCH_DIR_ENABLED=false
       - OPENVPN_PROVIDER=custom
       - OPENVPN_CONFIG=vpn_config
-      - LOCAL_NETWORK=192.168.12.0/24
       - TRANSMISSION_PEER_PORT=56004
       - TRANSMISSION_PORT_FORWARDING_ENABLED=true
       - TRANSMISSION_ENCRYPTION=1 # prefer encrypted connections but not required
       - TRANSMISSION_PREFETCH_ENABLED=true
       - DROP_DEFAULT_ROUTE=true # maybe works, maybe breaks
       - LOG_TO_STDOUT=true
-        #- PUID="${PUID}"
-        #- PGID="${PGID}"
-        #labels:
-        #  caddy: transmission.caddy.local
-        #  caddy.reverse_proxy: "{{upstreams 9091}}"
+
+      - PUID="${PUID}"
+      - PGID="${PGID}"
         #expose:
         #- 9091
     ports:
@@ -123,38 +120,22 @@ services:
   # @TODO try to put this in bridge networking
   plex:
     image: lscr.io/linuxserver/plex:latest
-      #networks:
-      #plex-lan:
-      #ipv4_address: 10.0.0.30
-      #mac_address: 02-42-0a-00-00-1e
     network_mode: host
     environment:
-      #- NETWORK_ACCESS=internal
       - PUID="${PUID}"
       - PGID="${PGID}"
       - VERSION=docker
-        #- ADVERTISE_IP=http://192.168.12.184:32400/
-        #- ADVERTISE_IP=http://plex.${LOCAL}:32400/
-      #- ALLOWED_NETWORKS=192.168.12.0/8  #192.168.1.0/24
       - TZ="${TZ}"
     volumes:
       - ${PLEX_DATA}/config:/config
-        #- ${PLEX_DATA}/movies-handbrake-encodes:/movies-handbrake-encodes:ro
-        #- ${PLEX_DATA}/tv-handbrake-encodes:/tv-handbrake-encodes:ro
-
       - ${SONARR_DATA}/media-organized:/tv-organized
-      - ${HARDLINK_MEDIA}/sonarr-media:/tv-organized-hardlink
-
+      - ${MEDIA_MANAGEMENT}/series-sonarr:/tv-organized-hardlink
       - ${RADARR_DATA}/media-organized:/movies-organized
-      - ${HARDLINK_MEDIA}/radarr-media:/movies-organized-hardlink
+      - ${MEDIA_MANAGEMENT}/movies-radarr:/movies-organized-hardlink
     expose:
       - 32400
     tmpfs:
       - /tmp
-        #tmpfs:
-        #  - /var/run/s6:exec
-        #  - /app
-        #  - /defaults
     restart: always
 
  
@@ -165,10 +146,10 @@ services:
       apps:
         aliases:
           - radarr
-      #user: '1026'
     tmpfs:
-      #- /var/run/s6:exec,rw
       - /tmp
+        #user: root
+    privileged: true
     cap_drop:
       - all
     cap_add:
@@ -181,14 +162,9 @@ services:
       - PUID="${PUID}"
       - PGID="${PGID}"
       - TZ="${TZ}"
-      - VIRTUAL_HOST=radarr.${LOCAL},movies.${LOCAL}
-      - VIRTUAL_PORT=7878
     volumes:
       - ${RADARR_DATA}/config:/config
-      - ${HARDLINK_MEDIA}:/media-organized
-        #- ${SHARED_RADARR_DATA}:/data/media-organized
-        #- ${SHARED_RADARR_DATA}/media-recycling-bin:/data/media-recycling-bin
-        #- ${SHARED_TRANSMISSION_DATA}:/data/completed/
+      - ${MEDIA_MANAGEMENT}:/media-management
     expose:
       - 7878
     restart: always
@@ -202,6 +178,7 @@ services:
       apps:
         aliases:
           - sonarr
+    user: root
     cap_drop:
       - all
     cap_add:
@@ -209,22 +186,14 @@ services:
       - setuid
       - chown
     tmpfs:
-      #- /var/run/s6:exec,rw
       - /tmp
     environment:
-      #- S6_READ_ONLY_ROOT=1
-      - NETWORK_ACCESS=internal
       - PUID="${PUID}"
       - PGID="${PGID}"
       - TZ="${TZ}"
-      - VIRTUAL_HOST=sonarr.${LOCAL},tv.${LOCAL},sonarr.nas.ts
-      - VIRTUAL_PORT=8989
     volumes:
       - ${SONARR_DATA}/config:/config
-      - ${HARDLINK_MEDIA}:/media-organized
-        #- ${SONARR_DATA}/media-organized:/data/media-organized
-        #- ${SONARR_DATA}/media-recycling-bin:/data/media-recycling-bin
-        #- ${TRANSMISSION_DATA}/data/completed:/data/completed
+      - ${MEDIA_MANAGEMENT}:/media-management
     expose:
       - 8989
     restart: always
@@ -399,55 +368,3 @@ services:
     environment:
       - TZ="${TZ}"
       - RECYCLARR_CREATE_CONFIG=true
-        
-
-
-
-
-  seafile-db:
-    image: mariadb:10.6
-    environment:
-      - MYSQL_ROOT_PASSWORD=${SEAFILE_DB_ROOT_PASSWORD} # Requested, set the root's password of MySQL service. CHANGE ON FIRST LOGIN
-      - MYSQL_LOG_CONSOLE=true
-    volumes:
-      - ${SEAFILE_DATA}/var/lib/mysql:/var/lib/mysql  # Requested, specifies the path to MySQL data persistent store.
-      #- tmp-seafile-db:/var/lib/mysql  # Requested, specifies the path to MySQL data persistent store.
-    networks:
-      seafile:
-        aliases:
-          - db # default used by seafile image
-
-  seafile-cache:
-    image: memcached:1.6.18
-    entrypoint: memcached -m 256
-    networks:
-      seafile:
-        aliases:
-          - memcached # default used by seafile image
-          
-  seafile:
-    image: seafileltd/seafile-mc:latest
-    ports:
-      - "9980:80"
-#     - "443:443"  # If https is enabled, cancel the comment.
-    volumes:
-      - ${SEAFILE_DATA}/shared:/shared   # Requested, specifies the path to Seafile data persistent store.
-        #- tmp-seafile:/shared   # Requested, specifies the path to Seafile data persistent store.
-    environment:
-      - DB_HOST=db
-      - DB_ROOT_PASSWD=${SEAFILE_DB_ROOT_PASSWORD}  # Requested, the value should be root's password of MySQL service.
-      - TIME_ZONE=${TZ}  # Optional, default is UTC. Should be uncomment and set to your local time zone.
-      - SEAFILE_ADMIN_EMAIL=${SEAFILE_ADMIN_EMAIL} # Specifies Seafile admin user, default is 'me@example.com'.
-      - SEAFILE_ADMIN_PASSWORD=${SEAFILE_ADMIN_PASSWORD} # Specifies Seafile admin password, default is 'asecret'.
-      - SEAFILE_SERVER_LETSENCRYPT=false   # Whether to use https or not.
-      - SEAFILE_SERVER_HOSTNAME=seafile.stonecat-shark.ts.net # Specifies your host name if https is enabled.
-        #    healthcheck:
-        #      test: wget --no-verbose --tries=1 --spider http://localhost
-    depends_on:
-      seafile-db:
-        condition: service_started
-      seafile-cache:
-        condition: service_started
-    networks:
-      - seafile
-      - seafile-svc

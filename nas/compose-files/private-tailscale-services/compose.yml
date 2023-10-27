@@ -4,14 +4,14 @@ version: "3.7"
 
 services:
 
-  caddy-tailscale:
-    build:
-      context: ./dockerfiles/caddy-tailscale
-      dockerfile: Dockerfile
-    env_file: ./dockerfiles/caddy-tailscale/values.env
-    networks:
-      - caddy-tailscale-test
-      #entrypoint: sh /usr/bin/start.sh 
+  #caddy-tailscale:
+  #  build:
+  #    context: ./dockerfiles/caddy-tailscale
+  #    dockerfile: Dockerfile
+  #  env_file: ./dockerfiles/caddy-tailscale/values.env
+  #  networks:
+  #    - caddy-tailscale-test
+  #    #entrypoint: sh /usr/bin/start.sh 
 
 
 
@@ -163,13 +163,13 @@ services:
       - ${TS_SIDECAR_BINDINGS_LHS}/portainer.bindings.json:${TS_SIDECAR_BINDINGS_RHS}:ro
 
 
-  seafile-svc:
-    image: ghcr.io/markpash/tailscale-sidecar:latest
-    networks: 
-      - seafile-svc
-    environment:
-      - TS_AUTHKEY=${TS_AUTHKEY}
-      - TS_SIDECAR_NAME=seafile
-    volumes:
-      - seafile-tailscale-config:/home/nonroot
-      - ${TS_SIDECAR_BINDINGS_LHS}/seafile.bindings.json:${TS_SIDECAR_BINDINGS_RHS}:ro
+        #seafile-svc:
+        #  image: ghcr.io/markpash/tailscale-sidecar:latest
+        #  networks: 
+        #    - seafile-svc
+        #  environment:
+        #    - TS_AUTHKEY=${TS_AUTHKEY}
+        #    - TS_SIDECAR_NAME=seafile
+        #  volumes:
+        #    - seafile-tailscale-config:/home/nonroot
+        #    - ${TS_SIDECAR_BINDINGS_LHS}/seafile.bindings.json:${TS_SIDECAR_BINDINGS_RHS}:ro
