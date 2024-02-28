@@ -1,7 +1,9 @@
-keyfile_password
-*.conf
 *.swp
+*.conf
+*.secrets
 *.no_commit
-.env
-.envrc
+
+.nova
 .DS_Store
+recyclarr.yml
+keyfile_password
